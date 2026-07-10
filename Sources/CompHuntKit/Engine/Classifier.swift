@@ -17,10 +17,14 @@ public enum Classifier {
         ("ctftime.org", .ctf),
     ]
 
-    private static let ctfKeywords = ["ctf", "capture the flag"]
+    // Each list carries the Vietnamese spellings too, so ybox titles classify.
+    private static let ctfKeywords = [
+        "ctf", "capture the flag", "an toàn thông tin", "an ninh mạng",
+    ]
     private static let cpKeywords = [
         "competitive programming", "icpc", "informatics olympiad",
         "olympiad in informatics", "coding contest", "programming contest",
+        "lập trình", "tin học",
         // Weak fallback: clist.by is overwhelmingly a programming-contest
         // aggregator, so an unmapped clist resource defaults to cp. Checked
         // after the ctf and ai keyword passes, so those still win.
@@ -29,10 +33,12 @@ public enum Classifier {
     private static let aiKeywords = [
         "machine learning", "ai challenge", "data science", " llm ",
         "deep learning", "artificial intelligence", "ai/ml", "generative ai",
+        "trí tuệ nhân tạo", "khoa học dữ liệu",
     ]
     private static let designKeywords = [
         "design", "ui/ux", "ux/ui", "illustration", "logo", "branding",
         "poster", "architecture", "photography", "creative",
+        "thiết kế", "sáng tạo",
     ]
     private static let hackathonKeywords = ["hackathon", "hack day", "makeathon", "devpost"]
 

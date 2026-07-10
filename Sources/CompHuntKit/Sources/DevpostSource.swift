@@ -69,8 +69,7 @@ public struct DevpostSource: CompetitionSource {
 
     /// Devpost embeds markup in prize_amount ("$<span ...>2,000,000</span>").
     static func stripTags(_ html: String) -> String {
-        html.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        Text.plain(html)
     }
 
     private struct Response: Decodable {

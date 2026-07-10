@@ -20,7 +20,8 @@ dedupe, a failing source never kills a run.
   (cp/ctf/ai/hackathon/design/other), `Region` (vietnam/global)
 - `Sources/CompHuntKit/Sources/` - one file per source implementing
   `CompetitionSource` (`fetch() async throws -> [CompetitionDTO]`): CTFtime,
-  Devpost, clist.by, ybox.vn (SwiftSoup), Contest Watchers (RSS), Fake (self-test)
+  Devpost, clist.by, ybox.vn (embedded `__INITIAL_STATE__` JSON, not HTML
+  scraping), Contest Watchers (RSS), Fake (self-test)
 - `Sources/CompHuntKit/Engine/` - `Classifier` (category + Vietnam detection),
   `RefreshEngine` (TaskGroup fan-out, dedupe/upsert preserving `firstSeen`)
 - `Sources/CompHuntKit/YouTrack/` - Track-button sink filing COMP issues

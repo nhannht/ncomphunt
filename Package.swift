@@ -8,13 +8,12 @@ let package = Package(
         .library(name: "CompHuntKit", targets: ["CompHuntKit"])
     ],
     dependencies: [
-        .package(url: "https://github.com/scinfu/SwiftSoup.git", from: "2.7.0"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.1.0"),
     ],
     targets: [
         .target(
             name: "CompHuntKit",
-            dependencies: ["SwiftSoup", "Yams"]
+            dependencies: ["Yams"]
         ),
         .testTarget(
             name: "CompHuntKitTests",
