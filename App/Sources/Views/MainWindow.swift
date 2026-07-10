@@ -104,15 +104,13 @@ struct CompetitionListPane: View {
                 List(selection: $selectedID) {
                     if grouping == .none {
                         ForEach(visible) { competition in
-                            CompetitionRow(competition: competition)
-                                .tag(competition.persistentModelID)
+                            row(competition)
                         }
                     } else {
                         ForEach(groups, id: \.key) { group in
                             Section("\(group.key) (\(group.items.count))") {
                                 ForEach(group.items) { competition in
-                                    CompetitionRow(competition: competition)
-                                        .tag(competition.persistentModelID)
+                                    row(competition)
                                 }
                             }
                         }
@@ -122,6 +120,14 @@ struct CompetitionListPane: View {
         }
         .navigationTitle(filter.label)
         .navigationSubtitle(subtitle)
+    }
+
+    private func row(_ competition: Competition) -> some View {
+        CompetitionRow(competition: competition)
+            .tag(competition.persistentModelID)
+            .contextMenu {
+                CompetitionActionsMenu(competition: competition)
+            }
     }
 
     private var subtitle: String {

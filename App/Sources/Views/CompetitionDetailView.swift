@@ -8,9 +8,19 @@ struct CompetitionDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(competition.title)
-                        .font(.title2.bold())
-                        .textSelection(.enabled)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(competition.title)
+                            .font(.title2.bold())
+                            .textSelection(.enabled)
+                        Spacer()
+                        Menu {
+                            CompetitionActionsMenu(competition: competition)
+                        } label: {
+                            Label("Actions", systemImage: "ellipsis.circle")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                    }
                     HStack(spacing: 6) {
                         CategoryChip(category: competition.category)
                         if competition.region == .vietnam {
@@ -19,6 +29,11 @@ struct CompetitionDetailView: View {
                         Text("via \(competition.source)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                        if let issueID = competition.trackedIssueID {
+                            Text("tracked \(issueID)")
+                                .font(.caption)
+                                .foregroundStyle(.green)
+                        }
                     }
                 }
 
@@ -27,8 +42,6 @@ struct CompetitionDetailView: View {
                         Label("Open competition page", systemImage: "safari")
                     }
                 }
-
-                TrackButton(competition: competition)
 
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
                     if !competition.organizer.isEmpty {

@@ -15,11 +15,20 @@ enum Notifier {
     }
 
     static func postNewCompetitions(_ titles: [String]) {
-        let content = UNMutableNotificationContent()
-        content.title = titles.count == 1
+        let title = titles.count == 1
             ? "New competition found"
             : "\(titles.count) new competitions found"
-        content.body = titles.prefix(3).joined(separator: "\n")
+        post(title, body: titles.prefix(3).joined(separator: "\n"))
+    }
+
+    /// One-off notification, used for action outcomes (menus are transient,
+    /// so filing results cannot surface inline).
+    static func post(_ title: String, body: String = "") {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        if !body.isEmpty {
+            content.body = body
+        }
         content.sound = nil
         let request = UNNotificationRequest(
             identifier: UUID().uuidString, content: content, trigger: nil)
