@@ -1,0 +1,36 @@
+name: CompHunt
+options:
+  bundleIdPrefix: com.nhannht
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+
+packages:
+  CompHuntKit:
+    path: ..
+
+targets:
+  CompHunt:
+    type: application
+    platform: macOS
+    sources:
+      - Sources
+    dependencies:
+      - package: CompHuntKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.comphunt
+        PRODUCT_NAME: CompHunt
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        # Local dev app: ad-hoc signature, no sandbox (reads ~/.claude config),
+        # no hardened runtime.
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_APP_SANDBOX: NO
+        COMBINE_HIDPI_IMAGES: YES
