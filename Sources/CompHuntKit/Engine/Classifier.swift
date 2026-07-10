@@ -21,6 +21,10 @@ public enum Classifier {
     private static let cpKeywords = [
         "competitive programming", "icpc", "informatics olympiad",
         "olympiad in informatics", "coding contest", "programming contest",
+        // Weak fallback: clist.by is overwhelmingly a programming-contest
+        // aggregator, so an unmapped clist resource defaults to cp. Checked
+        // after the ctf and ai keyword passes, so those still win.
+        "clist",
     ]
     private static let aiKeywords = [
         "machine learning", "ai challenge", "data science", " llm ",
