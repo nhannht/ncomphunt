@@ -18,7 +18,19 @@ public enum HTTP {
         + "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 
     public static func get(_ url: URL, headers: [String: String] = [:]) async throws -> Data {
+        try await send("GET", url, headers: headers, body: nil)
+    }
+
+    public static func post(_ url: URL, headers: [String: String] = [:], body: Data) async throws -> Data {
+        try await send("POST", url, headers: headers, body: body)
+    }
+
+    private static func send(
+        _ method: String, _ url: URL, headers: [String: String], body: Data?
+    ) async throws -> Data {
         var request = URLRequest(url: url, timeoutInterval: 30)
+        request.httpMethod = method
+        request.httpBody = body
         request.setValue(browserUserAgent, forHTTPHeaderField: "User-Agent")
         for (field, value) in headers {
             request.setValue(value, forHTTPHeaderField: field)

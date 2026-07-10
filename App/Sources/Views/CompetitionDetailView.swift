@@ -28,6 +28,8 @@ struct CompetitionDetailView: View {
                     }
                 }
 
+                TrackButton(competition: competition)
+
                 Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
                     if !competition.organizer.isEmpty {
                         detailRow("Organizer", competition.organizer)
