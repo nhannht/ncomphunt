@@ -44,6 +44,72 @@ enum CompetitionFilter: Hashable, Identifiable, CaseIterable {
     }
 }
 
+/// List sort order, persisted via @AppStorage as its raw value.
+enum ListSort: String, CaseIterable, Identifiable {
+    case deadline
+    case newest
+    case title
+    case source
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .deadline: "Next deadline"
+        case .newest: "Newest found"
+        case .title: "Title"
+        case .source: "Source"
+        }
+    }
+
+    func areInOrder(_ a: Competition, _ b: Competition) -> Bool {
+        switch self {
+        case .deadline:
+            return (a.nextRelevantDate ?? .distantFuture, a.title)
+                < (b.nextRelevantDate ?? .distantFuture, b.title)
+        case .newest:
+            if a.firstSeen != b.firstSeen { return a.firstSeen > b.firstSeen }
+            return a.title < b.title
+        case .title:
+            return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending
+        case .source:
+            return (a.source, a.title) < (b.source, b.title)
+        }
+    }
+}
+
+/// List grouping, persisted via @AppStorage as its raw value.
+enum ListGrouping: String, CaseIterable, Identifiable {
+    case none
+    case source
+    case category
+    case region
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .none: "None"
+        case .source: "Source"
+        case .category: "Category"
+        case .region: "Region"
+        }
+    }
+
+    func key(for competition: Competition) -> String? {
+        switch self {
+        case .none:
+            nil
+        case .source:
+            SourceID(rawValue: competition.source)?.displayName ?? competition.source
+        case .category:
+            competition.category.displayName
+        case .region:
+            competition.region.displayName
+        }
+    }
+}
+
 extension Competition {
     /// The next date that matters: registration deadline first, then start, then end.
     var nextRelevantDate: Date? {

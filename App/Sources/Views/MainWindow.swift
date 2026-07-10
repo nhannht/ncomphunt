@@ -7,6 +7,8 @@ struct MainWindow: View {
     @State private var filter: CompetitionFilter = .all
     @State private var selectedID: PersistentIdentifier?
     @State private var searchText = ""
+    @AppStorage("list.sort") private var sort: ListSort = .deadline
+    @AppStorage("list.grouping") private var grouping: ListGrouping = .none
 
     var body: some View {
         NavigationSplitView {
@@ -15,7 +17,9 @@ struct MainWindow: View {
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
         } content: {
-            CompetitionListPane(filter: filter, searchText: searchText, selectedID: $selectedID)
+            CompetitionListPane(
+                filter: filter, searchText: searchText, sort: sort,
+                grouping: grouping, selectedID: $selectedID)
                 .navigationSplitViewColumnWidth(min: 320, ideal: 380)
         } detail: {
             CompetitionDetailPane(selectedID: selectedID)
@@ -23,6 +27,20 @@ struct MainWindow: View {
         .searchable(text: $searchText, prompt: "Search competitions")
         .navigationTitle("CompHunt")
         .toolbar {
+            ToolbarItem(placement: .secondaryAction) {
+                Menu {
+                    Picker("Sort by", selection: $sort) {
+                        ForEach(ListSort.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                    Picker("Group by", selection: $grouping) {
+                        ForEach(ListGrouping.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label("Sort and Group", systemImage: "arrow.up.arrow.down")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 if model.isRefreshing {
                     ProgressView().controlSize(.small)
@@ -42,6 +60,8 @@ struct MainWindow: View {
 struct CompetitionListPane: View {
     let filter: CompetitionFilter
     let searchText: String
+    let sort: ListSort
+    let grouping: ListGrouping
     @Binding var selectedID: PersistentIdentifier?
 
     @Environment(AppModel.self) private var model
@@ -56,10 +76,20 @@ struct CompetitionListPane: View {
                     || $0.title.localizedCaseInsensitiveContains(searchText)
                     || $0.organizer.localizedCaseInsensitiveContains(searchText)
             }
-            .sorted {
-                ($0.nextRelevantDate ?? .distantFuture, $0.title)
-                    < ($1.nextRelevantDate ?? .distantFuture, $1.title)
-            }
+            .sorted(by: sort.areInOrder)
+    }
+
+    /// Groups keep the item sort inside them and appear in order of their
+    /// best-ranked item, so under deadline sort the most urgent group leads.
+    private var groups: [(key: String, items: [Competition])] {
+        var order: [String] = []
+        var buckets: [String: [Competition]] = [:]
+        for competition in visible {
+            let key = grouping.key(for: competition) ?? ""
+            if buckets[key] == nil { order.append(key) }
+            buckets[key, default: []].append(competition)
+        }
+        return order.map { (key: $0, items: buckets[$0]!) }
     }
 
     var body: some View {
@@ -71,9 +101,22 @@ struct CompetitionListPane: View {
                     Text(emptyDescription)
                 }
             } else {
-                List(visible, selection: $selectedID) { competition in
-                    CompetitionRow(competition: competition)
-                        .tag(competition.persistentModelID)
+                List(selection: $selectedID) {
+                    if grouping == .none {
+                        ForEach(visible) { competition in
+                            CompetitionRow(competition: competition)
+                                .tag(competition.persistentModelID)
+                        }
+                    } else {
+                        ForEach(groups, id: \.key) { group in
+                            Section("\(group.key) (\(group.items.count))") {
+                                ForEach(group.items) { competition in
+                                    CompetitionRow(competition: competition)
+                                        .tag(competition.persistentModelID)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
