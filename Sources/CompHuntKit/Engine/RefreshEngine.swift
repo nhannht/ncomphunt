@@ -98,9 +98,18 @@ public enum CompetitionStore {
         into context: ModelContext,
         now: Date = .now
     ) throws -> [String] {
-        // Dedupe within the batch first: earliest occurrence (richest source) wins.
-        var seenKeys = Set<String>()
-        let unique = dtos.filter { seenKeys.insert($0.key).inserted }
+        // Dedupe within the batch: earliest occurrence (richest source) wins,
+        // but absorbs any fields it was missing from later duplicates.
+        var indexByKey: [String: Int] = [:]
+        var unique: [CompetitionDTO] = []
+        for dto in dtos {
+            if let index = indexByKey[dto.key] {
+                unique[index].fillMissing(from: dto)
+            } else {
+                indexByKey[dto.key] = unique.count
+                unique.append(dto)
+            }
+        }
 
         var newTitles: [String] = []
         for dto in unique {

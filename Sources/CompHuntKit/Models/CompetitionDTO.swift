@@ -46,6 +46,23 @@ public struct CompetitionDTO: Sendable, Equatable {
         self.tags = tags
     }
 
+    /// Fills this DTO's empty fields from a duplicate of the same competition,
+    /// so the copy that wins in-batch dedupe still absorbs anything extra a
+    /// poorer-ranked copy knew.
+    public mutating func fillMissing(from other: CompetitionDTO) {
+        if organizer.isEmpty { organizer = other.organizer }
+        if category == nil { category = other.category }
+        if location.isEmpty { location = other.location }
+        if prize.isEmpty { prize = other.prize }
+        if details.isEmpty { details = other.details }
+        if startDate == nil { startDate = other.startDate }
+        if endDate == nil { endDate = other.endDate }
+        if registrationDeadline == nil { registrationDeadline = other.registrationDeadline }
+        for tag in other.tags where !tags.contains(tag) {
+            tags.append(tag)
+        }
+    }
+
     /// Dedupe key: normalized URL without query noise (job-recon `Job.key()` pattern).
     public var key: String {
         var normalized = url.split(separator: "?", maxSplits: 1).first.map(String.init) ?? url
