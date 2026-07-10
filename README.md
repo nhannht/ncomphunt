@@ -14,6 +14,12 @@ notifications for new finds.
 - ybox.vn - Vietnamese student and professional competitions
 - Contest Watchers - creative and design competition directory (RSS)
 
+## Tracking
+
+Competitions you decide to enter are filed into the YouTrack `COMP` project
+with the Track button (one Task issue per competition, deep-linked back from
+the app). Configuration is discovered from local machine files; see CLAUDE.md.
+
 ## Layout
 
 - `Sources/CompHuntKit/` - core library: models, source plugins, refresh engine,
