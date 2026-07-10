@@ -33,13 +33,18 @@ public struct RefreshEngine: Sendable {
     /// Every production source, richest first: on duplicate URLs within one
     /// batch the earliest source's fields win.
     public static func standardSources() -> [any CompetitionSource] {
-        [
-            CTFtimeSource(),
-            DevpostSource(),
-            ClistSource(),
-            YboxSource(),
-            ContestWatchersSource(),
-        ]
+        SourceID.allCases.map { $0.makeSource() }
+    }
+
+    /// Registry order, filtered to what the user enabled. `includeSearch`
+    /// gates the metered search-engine sources separately (the app includes
+    /// them at most once per day).
+    public static func sources(
+        enabled: Set<SourceID>, includeSearch: Bool
+    ) -> [any CompetitionSource] {
+        SourceID.allCases
+            .filter { enabled.contains($0) && (includeSearch || !$0.isSearch) }
+            .map { $0.makeSource() }
     }
 
     /// Network + parse stage only; no persistence.
@@ -85,6 +90,7 @@ public struct RefreshEngine: Sendable {
     public func refresh(into context: ModelContext, now: Date = .now) async -> RefreshReport {
         let (dtos, results) = await fetchAll()
         let newTitles = (try? CompetitionStore.upsert(dtos, into: context, now: now)) ?? []
+        _ = try? CompetitionStore.prune(context, now: now)
         return RefreshReport(results: results, newTitles: newTitles)
     }
 }
@@ -127,5 +133,32 @@ public enum CompetitionStore {
         }
         try context.save()
         return newTitles
+    }
+
+    /// Deletes stale dateless leads. Rows with no dates (mostly search hits)
+    /// can never expire through `isCurrent`, so they age out once unseen for
+    /// `maxAge`. Tracked rows are never pruned.
+    @MainActor
+    @discardableResult
+    public static func prune(
+        _ context: ModelContext,
+        olderThan maxAge: TimeInterval = 14 * 24 * 3600,
+        now: Date = .now
+    ) throws -> Int {
+        let cutoff = now.addingTimeInterval(-maxAge)
+        let descriptor = FetchDescriptor<Competition>(
+            predicate: #Predicate { $0.lastSeen < cutoff })
+        let stale = try context.fetch(descriptor).filter { row in
+            row.startDate == nil && row.endDate == nil
+                && row.registrationDeadline == nil
+                && row.trackedIssueID == nil
+        }
+        for row in stale {
+            context.delete(row)
+        }
+        if !stale.isEmpty {
+            try context.save()
+        }
+        return stale.count
     }
 }
