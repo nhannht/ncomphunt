@@ -1,0 +1,23 @@
+{
+  "kind": "customsearch#search",
+  "items": [
+    {
+      "kind": "customsearch#result",
+      "title": "Cuộc thi Thiết kế Poster Sáng tạo 2026",
+      "link": "https://designviet.example.vn/poster-2026",
+      "snippet": "Cuộc thi thiết kế poster dành cho sinh viên toàn quốc, tổng giải thưởng 50 triệu đồng."
+    },
+    {
+      "kind": "customsearch#result",
+      "title": "Beautiful mountain wallpapers",
+      "link": "https://wallpapers.example.com/mountains",
+      "snippet": "Download free 4K mountain wallpapers for your desktop."
+    },
+    {
+      "kind": "customsearch#result",
+      "title": "Global Design Contest 2026 &amp; Awards",
+      "link": "https://www.awards.example.com/design-2026",
+      "snippet": "International design contest with a $10,000 grand prize. Submissions close soon."
+    }
+  ]
+}

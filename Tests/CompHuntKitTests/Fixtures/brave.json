@@ -1,0 +1,30 @@
+{
+  "query": {
+    "original": "hackathon Vietnam 2026",
+    "more_results_available": true
+  },
+  "web": {
+    "results": [
+      {
+        "title": "Vietnam AI Hackathon 2026 - Registration open",
+        "url": "https://aihackathon.example.vn/register",
+        "description": "The largest <strong>hackathon</strong> in Vietnam returns in 2026 with a $20,000 prize pool. Teams of up to 4."
+      },
+      {
+        "title": "GreyCTF 2026",
+        "url": "https://ctftime.org/event/9999/",
+        "description": "CTF competition hosted on CTFtime."
+      },
+      {
+        "title": "Top 10 coworking cafes in Hanoi",
+        "url": "https://travel.example.com/hanoi-cafes",
+        "description": "Where to sit with a laptop in Hanoi: our favourite spots for remote work."
+      },
+      {
+        "title": "Hackathon - Wikipedia",
+        "url": "https://en.wikipedia.org/wiki/Hackathon",
+        "description": "A hackathon is a design sprint-like event."
+      }
+    ]
+  }
+}
