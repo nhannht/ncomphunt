@@ -26,7 +26,7 @@ targets:
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
-        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Nguyen Huu Thien Nhan. MIT License."
         # Local dev app: ad-hoc signature, no sandbox (reads ~/.claude config),
         # no hardened runtime.
         CODE_SIGN_IDENTITY: "-"
