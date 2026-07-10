@@ -16,9 +16,6 @@ final class AppModel {
     private let engine = RefreshEngine(sources: RefreshEngine.standardSources())
     private var autoRefreshTask: Task<Void, Never>?
 
-    /// Fired after a refresh that found new competitions; the notifier hooks in here.
-    var onNewCompetitions: (@MainActor ([String]) -> Void)?
-
     init() {
         let supportDir = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -41,11 +38,14 @@ final class AppModel {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
+        // The very first refresh seeds the whole index; notifying about
+        // a hundred "new" competitions then would be noise.
+        let isInitialSeed = lastRefresh == nil
         let report = await engine.refresh(into: container.mainContext)
         lastReport = report
         lastRefresh = .now
-        if report.newCount > 0 {
-            onNewCompetitions?(report.newTitles)
+        if report.newCount > 0, !isInitialSeed {
+            Notifier.postNewCompetitions(report.newTitles)
         }
     }
 
