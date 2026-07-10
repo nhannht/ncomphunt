@@ -2,23 +2,31 @@
 
 Native macOS app that finds and indexes competitions - competitive programming,
 AI challenges, CTFs, hackathons, and design contests - in Vietnam and globally,
-and lists them with deadline-first sorting, category filters, and native
+and lists them with sort and group controls, category filters, and native
 notifications for new finds.
 
 ## Sources
 
-- clist.by API v4 - aggregator covering Codeforces, AtCoder, LeetCode, CodeChef,
-  Kaggle, HackerRank and hundreds more (requires a free API key)
+Every source has an enable checkbox in Settings; a failing or unconfigured
+source is skipped, never kills a refresh.
+
 - CTFtime API v1 - the canonical worldwide CTF calendar
 - Devpost - global hackathons with prizes, themes, and deadlines
+- clist.by API v4 - aggregator covering Codeforces, AtCoder, LeetCode, CodeChef,
+  Kaggle, HackerRank and hundreds more (requires a free API key)
 - ybox.vn - Vietnamese student and professional competitions
 - Contest Watchers - creative and design competition directory (RSS)
+- Brave Search + Google Programmable Search - lead discovery over a fixed
+  bilingual query catalog, at most once per day to stay inside free API quotas
+  (both need free keys; leads with no dates age out after 14 days unseen)
 
-## Tracking
+## Actions
 
-Competitions you decide to enter are filed into the YouTrack `COMP` project
-with the Track button (one Task issue per competition, deep-linked back from
-the app). Configuration is discovered from local machine files; see CLAUDE.md.
+Right-click any row (or use the detail header menu): open page, share via the
+system sheet (Notes, Messages, Mail, AirDrop), copy link, add to Calendar as an
+.ics import, and file into the YouTrack `COMP` project (one Task issue per
+competition, deep-linked back from the app). Configuration is discovered from
+local machine files; see CLAUDE.md.
 
 ## Layout
 

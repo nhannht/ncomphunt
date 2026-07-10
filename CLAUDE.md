@@ -21,18 +21,33 @@ dedupe, a failing source never kills a run.
 - `Sources/CompHuntKit/Sources/` - one file per source implementing
   `CompetitionSource` (`fetch() async throws -> [CompetitionDTO]`): CTFtime,
   Devpost, clist.by, ybox.vn (embedded `__INITIAL_STATE__` JSON, not HTML
-  scraping), Contest Watchers (RSS), Fake (self-test)
+  scraping), Contest Watchers (RSS), Brave Search + Google CSE (lead discovery
+  over the `SearchCatalog` query set, gated by `SearchHitMapper`), Fake
+  (self-test). DuckDuckGo was evaluated and rejected: its scrapeable endpoints
+  serve bot-challenge pages (HTTP 202) and it has no official web-results API.
 - `Sources/CompHuntKit/Engine/` - `Classifier` (category + Vietnam detection),
-  `RefreshEngine` (TaskGroup fan-out, dedupe/upsert preserving `firstSeen`)
-- `Sources/CompHuntKit/YouTrack/` - Track-button sink filing COMP issues
-- `Sources/CompHuntKit/Support/` - `SecretsReader`, HTTP wrapper
-- `App/` - SwiftUI app: main window (NavigationSplitView) + MenuBarExtra +
-  refresh timer + UNUserNotifications
+  `RefreshEngine` (TaskGroup fan-out, dedupe/upsert preserving `firstSeen`,
+  prune of untracked dateless rows unseen 14 days), `SourceRegistry`
+  (`SourceID`: display names, config hints, metered-search flag; the app builds
+  its source list from it per refresh)
+- `Sources/CompHuntKit/YouTrack/` - sink filing COMP issues (a small menu item
+  in the app, not a headline button)
+- `Sources/CompHuntKit/Support/` - `SecretsReader`, HTTP wrapper, `ICSBuilder`
+  (calendar export used by the Add to Calendar action; no EventKit)
+- `App/` - SwiftUI app: main window (NavigationSplitView, sort/group toolbar
+  menu, per-row context menu = `CompetitionActionsMenu`) + MenuBarExtra +
+  refresh timer + UNUserNotifications. Settings has per-source checkboxes
+  (UserDefaults `source.<id>.enabled` via `SourcePreferences`); search sources
+  additionally gate on a 24h window (`lastSearchFetch`) recorded only after a
+  successful search run.
 
 ## Secrets and config (never hardcode, never commit)
 
-- clist.by username + API key: `~/.claude/secrets.yml` under the `clist:` key
-  (parsed with Yams). Missing key = clist source reports "skipped", run continues.
+- All keys live flat in `~/.claude/secrets.yml` (parsed with Yams, UPPER_SNAKE,
+  "your-" placeholder values rejected). Missing key = the source reports
+  "skipped", run continues. Keys: `CLIST_USERNAME` + `CLIST_API_KEY` (clist.by),
+  `BRAVE_API_KEY` (Brave Search API), `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX`
+  (Google Programmable Search: API key + engine id with "search entire web").
 - YouTrack base URL + bearer token: read from `~/.claude.json`
   `mcpServers.youtrack.headers.Authorization` (same discovery as job-recon).
 - YouTrack sits behind Cloudflare that blocks non-browser clients (error 1010):
@@ -41,8 +56,9 @@ dedupe, a failing source never kills a run.
 ## YouTrack
 
 - Competitions the user decides to enter are filed into the `COMP` project via
-  the Track button - one POST creating the issue with Type=Task in the same call
-  (transient-failure-safe, mirrors job-recon `youtrack.py`). No auto-filing.
+  the "Track in YouTrack" item in the actions menu - one POST creating the
+  issue with Type=Task in the same call (transient-failure-safe, mirrors
+  job-recon `youtrack.py`). No auto-filing. Outcomes surface as notifications.
 
 ## Conventions
 
