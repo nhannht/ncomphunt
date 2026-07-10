@@ -18,6 +18,11 @@ public struct YboxSource: CompetitionSource {
         return try Self.parse(html: html)
     }
 
+    /// Rails in preference order. The page embeds the same post in several
+    /// rails and the "Recommended" ones serve slimmer copies and years-old
+    /// posts, so the curated rails must win the in-batch dedupe.
+    private static let railPriority = ["NewestPosts", "HighlightPosts", "SelectivePosts"]
+
     static func parse(html: String, now: Date = .now) throws -> [CompetitionDTO] {
         guard let json = extractInitialState(from: html) else {
             throw SourceSkipped("ybox.vn page no longer embeds __INITIAL_STATE__")
@@ -26,18 +31,25 @@ public struct YboxSource: CompetitionSource {
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
+        let groups = state.app.initialPosts
+        let orderedRails = railPriority.filter { groups[$0] != nil }
+            + groups.keys.filter { !railPriority.contains($0) }.sorted()
+
         var seenIDs = Set<String>()
         var dtos: [CompetitionDTO] = []
-        for group in state.app.initialPosts.values {
-            for wrapped in group.edges ?? [] {
+        for rail in orderedRails {
+            for wrapped in groups[rail]?.edges ?? [] {
                 guard let post = wrapped.value,
                       post.community?.url == "cuoc-thi",
                       post.deleted != true, post.active != false,
                       let title = post.title, !title.isEmpty,
+                      // Moderated contest announcements always carry a
+                      // deadline; member essays, results posts, and resurfaced
+                      // 2017-era posts never do. Requiring it is the junk gate.
+                      let deadline = post.deadline.flatMap({ iso.date(from: $0) }),
+                      deadline >= now,
                       seenIDs.insert(post.id).inserted
                 else { continue }
-                let deadline = post.deadline.flatMap { iso.date(from: $0) }
-                if let deadline, deadline < now { continue }
                 dtos.append(CompetitionDTO(
                     source: "ybox",
                     title: title,

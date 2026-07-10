@@ -43,10 +43,51 @@ import Testing
     }
 
     @Test func braceScannerHandlesBracesInStrings() throws {
-        let html = #"<script>window.__INITIAL_STATE__ = {"app": {"initialPosts": {"g": {"edges": [{"_id": "x1", "title": "T }; tricky", "community": {"url": "cuoc-thi"}}]}}}};</script>"#
+        let html = #"<script>window.__INITIAL_STATE__ = {"app": {"initialPosts": {"g": {"edges": [{"_id": "x1", "title": "T }; tricky", "deadline": "2099-01-01T00:00:00.000Z", "community": {"url": "cuoc-thi"}}]}}}};</script>"#
         let dtos = try YboxSource.parse(html: html)
         #expect(dtos.count == 1)
         #expect(dtos[0].title == "T }; tricky")
+    }
+
+    /// Member essays, results posts, and resurfaced 2017-era posts carry no
+    /// deadline; moderated contest announcements always do.
+    @Test func deadlinelessJunkIsDropped() throws {
+        let html = #"""
+        <script>window.__INITIAL_STATE__ = {"app": {"initialPosts": {
+          "NewestPosts": {"edges": [
+            {"_id": "essay1", "title": "TRẺ SỚM HƠN NGƯỜI KHÁC MỘT VÀI NĂM CÓ LÀ MAY MẮN?",
+             "community": {"url": "cuoc-thi"}},
+            {"_id": "real1", "title": "[Online] Cuộc Thi Thật 2099",
+             "deadline": "2099-06-01T16:59:59.000Z", "community": {"url": "cuoc-thi"}}
+          ]},
+          "RecommendedPost30": {"edges": [
+            {"_id": "zombie1", "title": "Cuộc Thi Viết Cũ 2017", "community": {"url": "cuoc-thi"}}
+          ]}
+        }}};</script>
+        """#
+        let dtos = try YboxSource.parse(html: html)
+        #expect(dtos.count == 1)
+        #expect(dtos[0].title == "[Online] Cuộc Thi Thật 2099")
+    }
+
+    /// The same post often appears in a curated rail (full copy) and a
+    /// recommendation rail (slim copy, no deadline). The curated copy must win
+    /// regardless of dictionary ordering, and the slim copy must not block it.
+    @Test func curatedRailBeatsSlimRecommendationCopy() throws {
+        let html = #"""
+        <script>window.__INITIAL_STATE__ = {"app": {"initialPosts": {
+          "RecommendedPost15": {"edges": [
+            {"_id": "dup1", "title": "[Online] Cuộc Thi Trùng", "community": {"url": "cuoc-thi"}}
+          ]},
+          "NewestPosts": {"edges": [
+            {"_id": "dup1", "title": "[Online] Cuộc Thi Trùng",
+             "deadline": "2099-03-01T16:59:59.000Z", "community": {"url": "cuoc-thi"}}
+          ]}
+        }}};</script>
+        """#
+        let dtos = try YboxSource.parse(html: html)
+        #expect(dtos.count == 1)
+        #expect(dtos[0].registrationDeadline != nil)
     }
 }
 
