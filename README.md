@@ -8,7 +8,7 @@ AI challenges, CTFs, hackathons, and design contests - in Vietnam and globally,
 and lists them with sort and group controls, category filters, a menu bar extra,
 and native notifications for new finds.
 
-![](./showcase/comphunt-bar.png)
+![](./showcase/ncomphunt-bar.png)
 
 Built in Swift 6 / SwiftUI with SwiftData persistence. No account, no telemetry,
 no server: the app talks directly to the public sources below and everything
