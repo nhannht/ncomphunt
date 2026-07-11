@@ -28,10 +28,17 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Nguyen Huu Thien Nhan. MIT License."
-        # Local dev app: ad-hoc signature, no sandbox (reads ~/.claude config),
-        # no hardened runtime.
-        CODE_SIGN_IDENTITY: "-"
+        # No sandbox in either config: the app reads ~/.claude config files.
         CODE_SIGN_STYLE: Manual
-        ENABLE_HARDENED_RUNTIME: NO
         ENABLE_APP_SANDBOX: NO
         COMBINE_HIDPI_IMAGES: YES
+      configs:
+        # Debug: ad-hoc local signature, debugger-friendly.
+        Debug:
+          CODE_SIGN_IDENTITY: "-"
+          ENABLE_HARDENED_RUNTIME: NO
+        # Release: Developer ID + hardened runtime for notarized distribution.
+        Release:
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          DEVELOPMENT_TEAM: V3P5U9Z68M
+          ENABLE_HARDENED_RUNTIME: YES
