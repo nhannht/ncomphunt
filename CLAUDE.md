@@ -1,6 +1,9 @@
 # CLAUDE.md
 
-CompHunt - native macOS (Swift/SwiftUI) competition indexer. Finds and lists
+nCompHunt - native macOS (Swift/SwiftUI) competition indexer. Display/product
+name is nCompHunt (bundle id com.nhannht.ncomphunt, DMG slug ncomphunt); the
+internal code names - target, scheme, xcodeproj, CompHuntKit module - remain
+CompHunt. Finds and lists
 competitive programming contests, AI competitions, CTFs, hackathons, and design
 contests, Vietnam-first and global. Sibling of `../job-tracker/recon` (the Python
 job-recon engine) and follows its proven patterns: source plugins, normalized-URL

@@ -19,8 +19,8 @@ targets:
       - package: CompHuntKit
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.comphunt
-        PRODUCT_NAME: CompHunt
+        PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.ncomphunt
+        PRODUCT_NAME: nCompHunt
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.0"

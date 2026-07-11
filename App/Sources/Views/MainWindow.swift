@@ -25,7 +25,7 @@ struct MainWindow: View {
             CompetitionDetailPane(selectedID: selectedID)
         }
         .searchable(text: $searchText, prompt: "Search competitions")
-        .navigationTitle("CompHunt")
+        .navigationTitle("nCompHunt")
         .toolbar {
             ToolbarItem(placement: .secondaryAction) {
                 Menu {

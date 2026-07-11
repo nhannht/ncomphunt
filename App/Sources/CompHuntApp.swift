@@ -17,7 +17,7 @@ struct CompHuntApp: App {
         }
         .modelContainer(model.container)
 
-        MenuBarExtra("CompHunt", systemImage: "trophy") {
+        MenuBarExtra("nCompHunt", systemImage: "trophy") {
             MenuBarView()
                 .environment(model)
         }

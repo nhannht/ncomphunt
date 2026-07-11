@@ -35,7 +35,7 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Open CompHunt") {
+        Button("Open nCompHunt") {
             openWindow(id: "main")
             NSApp.activate(ignoringOtherApps: true)
         }
@@ -51,7 +51,7 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Quit CompHunt") {
+        Button("Quit nCompHunt") {
             NSApp.terminate(nil)
         }
     }

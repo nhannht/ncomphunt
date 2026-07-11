@@ -127,7 +127,7 @@ struct YouTrackMenuItem: View {
             }
             lines += ["", "## Details", "", snippet]
         }
-        lines += ["", "_Filed by CompHunt._"]
+        lines += ["", "_Filed by nCompHunt._"]
         return lines.joined(separator: "\n")
     }
 }

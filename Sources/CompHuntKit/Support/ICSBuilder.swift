@@ -31,16 +31,16 @@ public enum ICSBuilder {
         if !competition.prize.isEmpty {
             description.append("Prize: \(competition.prize)")
         }
-        description.append("Found via \(competition.source) (CompHunt)")
+        description.append("Found via \(competition.source) (nCompHunt)")
 
         var lines = [
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
-            "PRODID:-//nhannht//CompHunt//EN",
+            "PRODID:-//nhannht//nCompHunt//EN",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
             "BEGIN:VEVENT",
-            "UID:\(escape(competition.key))@comphunt",
+            "UID:\(escape(competition.key))@ncomphunt",
             "DTSTAMP:\(format(now))",
             "DTSTART:\(format(start))",
             "DTEND:\(format(end))",

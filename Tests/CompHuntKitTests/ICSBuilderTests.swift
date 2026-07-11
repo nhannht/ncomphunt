@@ -54,7 +54,7 @@ import Testing
         #expect(ics.contains("TRIGGER:-P1D"))
         #expect(ics.contains("LOCATION:Hanoi"))
         #expect(ics.contains("Prize: $1000"))
-        #expect(ics.contains("UID:https://example.com/contest@comphunt"))
+        #expect(ics.contains("UID:https://example.com/contest@ncomphunt"))
     }
 
     @Test func escapesTextValues() {

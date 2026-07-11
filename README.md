@@ -1,7 +1,7 @@
 
 ![](./showcase/Showcase%20Hero.png)
 
-# CompHunt
+# nCompHunt
 
 Native macOS app that finds and indexes competitions - competitive programming,
 AI challenges, CTFs, hackathons, and design contests - in Vietnam and globally,
@@ -18,8 +18,8 @@ stays on your Mac.
 ## Install
 
 - Download the latest notarized build from
-  [Releases](https://github.com/nhannht/comphunt/releases), or
-- Homebrew: `brew install nhannht/tap/comphunt`, or
+  [Releases](https://github.com/nhannht/ncomphunt/releases), or
+- Homebrew: `brew install nhannht/tap/ncomphunt`, or
 - Build from source (see Build below).
 
 ## Sources

@@ -18,8 +18,8 @@ VERSION="$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"/\1/p' "$ROOT/App/project.yml
 BUILD_DIR="$ROOT/.release"
 ARCHIVE="$BUILD_DIR/CompHunt.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"
-APP="$EXPORT_DIR/CompHunt.app"
-DMG="$BUILD_DIR/CompHunt-$VERSION.dmg"
+APP="$EXPORT_DIR/nCompHunt.app"
+DMG="$BUILD_DIR/ncomphunt-$VERSION.dmg"
 
 build() {
   rm -rf "$BUILD_DIR"
@@ -53,8 +53,8 @@ PLIST
 notarize() {
   test -d "$APP" || { echo "run 'scripts/release.sh build' first" >&2; exit 1; }
 
-  ditto -c -k --keepParent "$APP" "$BUILD_DIR/CompHunt.zip"
-  xcrun notarytool submit "$BUILD_DIR/CompHunt.zip" \
+  ditto -c -k --keepParent "$APP" "$BUILD_DIR/nCompHunt.zip"
+  xcrun notarytool submit "$BUILD_DIR/nCompHunt.zip" \
     --keychain-profile "$NOTARY_PROFILE" --wait
   xcrun stapler staple "$APP"
 
@@ -63,7 +63,7 @@ notarize() {
   mkdir -p "$STAGE"
   cp -R "$APP" "$STAGE/"
   ln -s /Applications "$STAGE/Applications"
-  hdiutil create -volname "CompHunt $VERSION" -srcfolder "$STAGE" \
+  hdiutil create -volname "nCompHunt $VERSION" -srcfolder "$STAGE" \
     -ov -format UDZO "$DMG"
 
   xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
