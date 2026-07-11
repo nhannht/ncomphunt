@@ -1,3 +1,6 @@
+
+![](./showcase/Showcase%20Hero.png)
+
 # CompHunt
 
 Native macOS app that finds and indexes competitions - competitive programming,
@@ -5,9 +8,12 @@ AI challenges, CTFs, hackathons, and design contests - in Vietnam and globally,
 and lists them with sort and group controls, category filters, a menu bar extra,
 and native notifications for new finds.
 
+![](./showcase/comphunt-bar.png)
+
 Built in Swift 6 / SwiftUI with SwiftData persistence. No account, no telemetry,
 no server: the app talks directly to the public sources below and everything
 stays on your Mac.
+
 
 ## Install
 
@@ -53,6 +59,8 @@ The optional YouTrack action reads its base URL and bearer token from
 competition into a `COMP` project.
 
 ## Actions
+
+
 
 Right-click any row (or use the detail header menu): open page, share via the
 system sheet (Notes, Messages, Mail, AirDrop), copy link, add to Calendar as an
