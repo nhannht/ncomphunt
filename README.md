@@ -17,10 +17,14 @@ stays on your Mac.
 
 ## Install
 
-- Download the latest notarized build from
-  [Releases](https://github.com/nhannht/ncomphunt/releases), or
-- Homebrew: `brew install nhannht/tap/ncomphunt`, or
-- Build from source (see Build below).
+- **Homebrew** (recommended): `brew install --cask nhannht/tap/ncomphunt`
+- **Direct download**: grab the latest notarized `.dmg` from
+  [Releases](https://github.com/nhannht/ncomphunt/releases)
+- **Build from source**: see [Build](#build) below
+
+On first launch, macOS asks you to confirm opening an app downloaded from the
+internet - click **Open**. nCompHunt is signed with an Apple Developer ID and
+notarized by Apple, so you will not see an "unidentified developer" warning.
 
 ## Sources
 
