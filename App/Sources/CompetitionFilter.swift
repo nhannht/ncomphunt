@@ -1,24 +1,24 @@
 import CompHuntKit
 import Foundation
 
+/// Sidebar selection: the category axis only. Region is an orthogonal concern
+/// handled by `RegionFilter`, not another entry in this list.
 enum CompetitionFilter: Hashable, Identifiable, CaseIterable {
     case all
     case category(CompetitionCategory)
-    case vietnam
 
     var id: Self { self }
 
     static var allCases: [CompetitionFilter] {
         [.all]
             + CompetitionCategory.allCases.filter { $0 != .other }.map { .category($0) }
-            + [.category(.other), .vietnam]
+            + [.category(.other)]
     }
 
     var label: String {
         switch self {
         case .all: "All"
         case .category(let category): category.displayName
-        case .vietnam: "Vietnam"
         }
     }
 
@@ -31,7 +31,6 @@ enum CompetitionFilter: Hashable, Identifiable, CaseIterable {
         case .category(.hackathon): "hammer"
         case .category(.design): "paintbrush"
         case .category(.other): "questionmark.circle"
-        case .vietnam: "mappin.and.ellipse"
         }
     }
 
@@ -39,7 +38,36 @@ enum CompetitionFilter: Hashable, Identifiable, CaseIterable {
         switch self {
         case .all: true
         case .category(let category): competition.category == category
+        }
+    }
+}
+
+/// Region filter, orthogonal to the category sidebar. Persisted via @AppStorage
+/// as its raw value; the toolbar filter menu and the list read the same truth.
+enum RegionFilter: String, CaseIterable, Identifiable {
+    case all
+    case vietnam
+    case global
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .all: "All regions"
+        case .vietnam: "Vietnam"
+        case .global: "Global"
+        }
+    }
+
+    /// True when a region other than "all" is active, so the toolbar icon can
+    /// signal that the list is filtered.
+    var isActive: Bool { self != .all }
+
+    func matches(_ competition: Competition) -> Bool {
+        switch self {
+        case .all: true
         case .vietnam: competition.region == .vietnam
+        case .global: competition.region == .global
         }
     }
 }

@@ -9,6 +9,7 @@ struct MainWindow: View {
     @State private var searchText = ""
     @AppStorage("list.sort") private var sort: ListSort = .deadline
     @AppStorage("list.grouping") private var grouping: ListGrouping = .none
+    @AppStorage("list.region") private var region: RegionFilter = .all
 
     var body: some View {
         NavigationSplitView {
@@ -18,7 +19,7 @@ struct MainWindow: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
         } content: {
             CompetitionListPane(
-                filter: filter, searchText: searchText, sort: sort,
+                filter: filter, region: region, searchText: searchText, sort: sort,
                 grouping: grouping, selectedID: $selectedID)
                 .navigationSplitViewColumnWidth(min: 320, ideal: 380)
         } detail: {
@@ -41,6 +42,18 @@ struct MainWindow: View {
                     Label("Sort and Group", systemImage: "arrow.up.arrow.down")
                 }
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Menu {
+                    Picker("Region", selection: $region) {
+                        ForEach(RegionFilter.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label("Filter by region", systemImage: region.isActive
+                        ? "line.3.horizontal.decrease.circle.fill"
+                        : "line.3.horizontal.decrease.circle")
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 if model.isRefreshing {
                     ProgressView().controlSize(.small)
@@ -59,6 +72,7 @@ struct MainWindow: View {
 
 struct CompetitionListPane: View {
     let filter: CompetitionFilter
+    let region: RegionFilter
     let searchText: String
     let sort: ListSort
     let grouping: ListGrouping
@@ -70,7 +84,7 @@ struct CompetitionListPane: View {
     private var visible: [Competition] {
         let now = Date.now
         return competitions
-            .filter { $0.isCurrent(asOf: now) && filter.matches($0) }
+            .filter { $0.isCurrent(asOf: now) && filter.matches($0) && region.matches($0) }
             .filter {
                 searchText.isEmpty
                     || $0.title.localizedCaseInsensitiveContains(searchText)
