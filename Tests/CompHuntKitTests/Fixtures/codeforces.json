@@ -1,0 +1,33 @@
+{
+  "status": "OK",
+  "result": [
+    {
+      "id": 2244,
+      "name": "Codeforces Round 1109 (Div. 3)",
+      "type": "ICPC",
+      "phase": "BEFORE",
+      "frozen": false,
+      "durationSeconds": 8100,
+      "startTimeSeconds": 1784039700,
+      "relativeTimeSeconds": -26205
+    },
+    {
+      "id": 2250,
+      "name": "Codeforces Unscheduled Round (Div. 2)",
+      "type": "CF",
+      "phase": "BEFORE",
+      "frozen": false,
+      "durationSeconds": 7200
+    },
+    {
+      "id": 2100,
+      "name": "Educational Codeforces Round 190 (Rated for Div. 2)",
+      "type": "ICPC",
+      "phase": "FINISHED",
+      "frozen": false,
+      "durationSeconds": 7200,
+      "startTimeSeconds": 1770000000,
+      "relativeTimeSeconds": 14039700
+    }
+  ]
+}

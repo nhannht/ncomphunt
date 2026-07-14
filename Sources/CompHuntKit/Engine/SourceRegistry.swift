@@ -7,6 +7,8 @@ public enum SourceID: String, CaseIterable, Sendable, Identifiable {
     case ctftime
     case devpost
     case clist
+    case codeforces
+    case mlcontests
     case ybox
     case contestwatchers
     case brave
@@ -19,6 +21,8 @@ public enum SourceID: String, CaseIterable, Sendable, Identifiable {
         case .ctftime: "CTFtime"
         case .devpost: "Devpost"
         case .clist: "clist.by"
+        case .codeforces: "Codeforces"
+        case .mlcontests: "ML Contests"
         case .ybox: "ybox.vn"
         case .contestwatchers: "Contest Watchers"
         case .brave: "Brave Search"
@@ -61,6 +65,8 @@ public enum SourceID: String, CaseIterable, Sendable, Identifiable {
         case .ctftime: CTFtimeSource()
         case .devpost: DevpostSource()
         case .clist: ClistSource()
+        case .codeforces: CodeforcesSource()
+        case .mlcontests: MLContestsSource()
         case .ybox: YboxSource()
         case .contestwatchers: ContestWatchersSource()
         case .brave: BraveSearchSource()

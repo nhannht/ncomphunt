@@ -23,7 +23,12 @@ dedupe, a failing source never kills a run.
   (cp/ctf/ai/hackathon/design/other), `Region` (vietnam/global)
 - `Sources/CompHuntKit/Sources/` - one file per source implementing
   `CompetitionSource` (`fetch() async throws -> [CompetitionDTO]`): CTFtime,
-  Devpost, clist.by, ybox.vn (embedded `__INITIAL_STATE__` JSON, not HTML
+  Devpost, clist.by, Codeforces (keyless public `contest.list` API, upcoming
+  rounds only; guarantees the CP category is never empty out of the box),
+  MLContests (keyless; `data-competitions` embedded JSON on mlcontests.com, the
+  "CTFtime of AI" - keyless Kaggle/Zindi/Codabench/HuggingFace/DrivenData/AIcrowd
+  coverage, `category: .ai`, open comps only), ybox.vn (embedded
+  `__INITIAL_STATE__` JSON, not HTML
   scraping), Contest Watchers (RSS), Brave Search + Google CSE (lead discovery
   over the `SearchCatalog` query set, gated by `SearchHitMapper`), Fake
   (self-test). DuckDuckGo was evaluated and rejected: its scrapeable endpoints
