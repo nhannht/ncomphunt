@@ -17,7 +17,8 @@ trap 'echo "release.sh: aborted (exit $?) near line ${LINENO}" >&2' ERR
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 NOTARY_PROFILE="${NOTARY_PROFILE:-notarytool}"
-VERSION="$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"/\1/p' "$ROOT/App/project.yml")"
+# head -n1: app and widget targets both carry MARKETING_VERSION (same value).
+VERSION="$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"/\1/p' "$ROOT/App/project.yml" | head -n1)"
 BUILD_DIR="$ROOT/.release"
 ARCHIVE="$BUILD_DIR/CompHunt.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"
