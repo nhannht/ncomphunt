@@ -5,8 +5,8 @@
 
 Native macOS app that finds and indexes competitions - competitive programming,
 AI challenges, CTFs, hackathons, and design contests - in Vietnam and globally,
-and lists them with sort and group controls, category filters, a menu bar extra,
-and native notifications for new finds.
+and lists them with sort and group controls, category and region filters, a menu
+bar extra, and native notifications for new finds.
 
 ![](./showcase/ncomphunt-bar.png)
 
@@ -29,15 +29,18 @@ notarized by Apple, so you will not see an "unidentified developer" warning.
 ## Sources
 
 Every source has an enable checkbox in Settings; a failing or unconfigured
-source is skipped, never kills a refresh. The first four work with zero
-configuration.
+source is skipped, never kills a refresh. The keyless sources below need zero
+configuration and fill every category out of the box.
 
 - CTFtime API v1 - the canonical worldwide CTF calendar
 - Devpost - global hackathons with prizes, themes, and deadlines
+- Codeforces API - upcoming competitive-programming rounds (keyless)
+- MLContests - open AI/ML competitions across Kaggle, Zindi, Codabench, Hugging
+  Face, DrivenData, and AIcrowd (keyless)
 - ybox.vn - Vietnamese student and professional competitions
 - Contest Watchers - creative and design competition directory (RSS)
-- clist.by API v4 - aggregator covering Codeforces, AtCoder, LeetCode, CodeChef,
-  Kaggle, HackerRank and hundreds more (requires a free API key)
+- clist.by API v4 - aggregator broadening competitive programming with AtCoder,
+  LeetCode, CodeChef, HackerRank and hundreds more (requires a free API key)
 - Brave Search + Google Programmable Search - lead discovery over a fixed
   bilingual query catalog, at most once per day to stay inside free API quotas
   (both need free keys; leads with no dates age out after 14 days unseen)
