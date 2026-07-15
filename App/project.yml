@@ -17,6 +17,8 @@ targets:
       - Sources
     dependencies:
       - package: CompHuntKit
+      - target: CompHuntWidget
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.ncomphunt
@@ -25,6 +27,11 @@ targets:
         CURRENT_PROJECT_VERSION: "2"
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: YES
+        # Partial plist merged with the generated keys: adds the ncomphunt://
+        # URL scheme the widget deep-links into.
+        INFOPLIST_FILE: CompHunt-Info.plist
+        # App Group (widget snapshot sharing); app itself stays non-sandboxed.
+        CODE_SIGN_ENTITLEMENTS: CompHunt.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Nguyen Huu Thien Nhan. MIT License."
@@ -38,6 +45,38 @@ targets:
           CODE_SIGN_IDENTITY: "-"
           ENABLE_HARDENED_RUNTIME: NO
         # Release: Developer ID + hardened runtime for notarized distribution.
+        Release:
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          DEVELOPMENT_TEAM: V3P5U9Z68M
+          ENABLE_HARDENED_RUNTIME: YES
+
+  CompHuntWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Widget
+    dependencies:
+      - package: CompHuntKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.ncomphunt.widget
+        PRODUCT_NAME: CompHuntWidget
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "2"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        # Partial plist merged with the generated keys: marks this as a WidgetKit
+        # extension (NSExtensionPointIdentifier).
+        INFOPLIST_FILE: Widget/CompHuntWidget-Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: nCompHunt
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Nguyen Huu Thien Nhan. MIT License."
+        # Extensions are sandboxed; the App Group is declared in the entitlements.
+        CODE_SIGN_ENTITLEMENTS: Widget/CompHuntWidget.entitlements
+        CODE_SIGN_STYLE: Manual
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "-"
+          ENABLE_HARDENED_RUNTIME: NO
         Release:
           CODE_SIGN_IDENTITY: "Developer ID Application"
           DEVELOPMENT_TEAM: V3P5U9Z68M

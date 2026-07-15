@@ -1,3 +1,4 @@
+import AppKit
 import CompHuntKit
 import SwiftData
 import SwiftUI
@@ -14,6 +15,10 @@ struct CompHuntApp: App {
         WindowGroup(id: "main") {
             MainWindow()
                 .environment(model)
+                .onOpenURL { url in
+                    model.handleDeepLink(url)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
         }
         .modelContainer(model.container)
 

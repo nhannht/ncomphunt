@@ -66,9 +66,19 @@ struct MainWindow: View {
         }
         .task {
             model.startAutoRefresh()
+            applyDeepLinkSelection()
         }
         .onChange(of: filter) { model.recomputeMenuBar() }
         .onChange(of: region) { model.recomputeMenuBar() }
+        .onChange(of: model.deepLinkSelection) { applyDeepLinkSelection() }
+    }
+
+    /// Select the row a widget deep link staged, then clear it so a repeat tap on
+    /// the same contest re-selects it.
+    private func applyDeepLinkSelection() {
+        guard let target = model.deepLinkSelection else { return }
+        selectedID = target
+        model.clearDeepLinkSelection()
     }
 }
 
