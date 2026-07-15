@@ -21,6 +21,11 @@ final class AppModel {
     /// it to select the row.
     private(set) var deepLinkSelection: PersistentIdentifier?
 
+    /// Whether the dedicated nCompHunt calendar sync is on. Mirrors the service's
+    /// UserDefaults flag as observable state so the Settings toggle re-renders
+    /// (including flipping back if the user denies calendar access).
+    private(set) var calendarSyncEnabled: Bool = CalendarSyncService.shared.isEnabled
+
     private var autoRefreshTask: Task<Void, Never>?
     private var countdownTask: Task<Void, Never>?
 
@@ -74,6 +79,12 @@ final class AppModel {
             Notifier.postNewCompetitions(report.newTitles)
         }
         recomputeMenuBar()
+        await CalendarSyncService.shared.syncIfEnabled(competitions: allCompetitions())
+    }
+
+    /// Every persisted competition, or an empty array if the store read fails.
+    private func allCompetitions() -> [Competition] {
+        (try? container.mainContext.fetch(FetchDescriptor<Competition>())) ?? []
     }
 
     private static let lastSearchFetchKey = "lastSearchFetch"
@@ -190,5 +201,32 @@ extension AppModel {
 
     func clearDeepLinkSelection() {
         deepLinkSelection = nil
+    }
+}
+
+extension AppModel {
+    /// One-line status for the Settings calendar row.
+    var calendarStatusText: String { CalendarSyncService.shared.statusText }
+
+    /// Toggle the dedicated-calendar sync. Turning it on requests full calendar
+    /// access and, on grant, runs an immediate reconcile; a denial flips the
+    /// observable flag back off so the checkbox reflects reality.
+    func setCalendarSync(_ on: Bool) {
+        if on {
+            Task {
+                calendarSyncEnabled = await CalendarSyncService.shared.enable(
+                    with: allCompetitions())
+            }
+        } else {
+            CalendarSyncService.shared.disable()
+            calendarSyncEnabled = false
+        }
+    }
+
+    /// Explicit teardown: stop syncing and delete the calendar and its events.
+    func removeCalendar() {
+        CalendarSyncService.shared.disable()
+        CalendarSyncService.shared.removeCalendar()
+        calendarSyncEnabled = false
     }
 }

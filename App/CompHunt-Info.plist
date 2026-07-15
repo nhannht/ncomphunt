@@ -3,7 +3,11 @@
 <plist version="1.0">
 <dict>
 	<!-- Partial Info.plist: GENERATE_INFOPLIST_FILE merges the standard keys on
-	     top. Declares the ncomphunt:// scheme the widget deep-links use. -->
+	     top. Declares the ncomphunt:// scheme the widget deep-links use, and the
+	     full-access calendar usage string EventKit shows when the user opts in to
+	     the dedicated-calendar sync. -->
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>nCompHunt keeps a dedicated calendar of your competition deadlines and start times up to date.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

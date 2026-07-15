@@ -28,6 +28,28 @@ struct SettingsView: View {
                     }
                 }
             }
+            Section("Calendar") {
+                Toggle(isOn: Binding(
+                    get: { model.calendarSyncEnabled },
+                    set: { model.setCalendarSync($0) })
+                ) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Sync to a dedicated nCompHunt calendar")
+                        Text(model.calendarStatusText)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .toggleStyle(.checkbox)
+                if model.calendarSyncEnabled {
+                    Button("Remove nCompHunt calendar", role: .destructive) {
+                        model.removeCalendar()
+                    }
+                }
+                Text("Deadlines and start times stay updated in a dedicated calendar; when a contest date moves, its event updates in place. The one-off \"Add to Calendar\" action stays available per contest.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section("Refresh") {
                 LabeledContent("Interval", value: "On launch, then every 3 hours")
                 if let last = model.lastRefresh {
