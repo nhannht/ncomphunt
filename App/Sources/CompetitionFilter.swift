@@ -139,19 +139,49 @@ enum ListGrouping: String, CaseIterable, Identifiable {
 }
 
 extension Competition {
-    /// The next date that matters: registration deadline first, then start, then end.
-    var nextRelevantDate: Date? {
-        registrationDeadline ?? startDate ?? endDate
-    }
-
-    /// Upcoming, ongoing, or dateless. Ended competitions drop out of the list.
-    func isCurrent(asOf now: Date = .now) -> Bool {
-        if let end = endDate { return end >= now }
-        if let next = nextRelevantDate { return next >= now }
-        return true
-    }
-
+    /// `nextRelevantDate` and `isCurrent(asOf:)` now live in CompHuntKit
+    /// (Schedule.swift) so the selection logic is unit-testable without the app.
     func isNew(asOf now: Date = .now) -> Bool {
         firstSeen.distance(to: now) < 24 * 3600
+    }
+}
+
+/// RawRepresentable so the category filter can persist via `@AppStorage`, letting
+/// the main window and the menu-bar countdown read one shared truth.
+extension CompetitionFilter: RawRepresentable {
+    init?(rawValue: String) {
+        if rawValue == "all" {
+            self = .all
+        } else if let category = CompetitionCategory(rawValue: rawValue) {
+            self = .category(category)
+        } else {
+            return nil
+        }
+    }
+
+    var rawValue: String {
+        switch self {
+        case .all: "all"
+        case .category(let category): category.rawValue
+        }
+    }
+
+    /// nil means "any category" - the input `nextUpcoming` expects.
+    var categoryValue: CompetitionCategory? {
+        switch self {
+        case .all: nil
+        case .category(let category): category
+        }
+    }
+}
+
+extension RegionFilter {
+    /// nil means "any region" - the input `nextUpcoming` expects.
+    var regionValue: Region? {
+        switch self {
+        case .all: nil
+        case .vietnam: .vietnam
+        case .global: .global
+        }
     }
 }

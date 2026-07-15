@@ -4,9 +4,9 @@ import SwiftUI
 
 struct MainWindow: View {
     @Environment(AppModel.self) private var model
-    @State private var filter: CompetitionFilter = .all
     @State private var selectedID: PersistentIdentifier?
     @State private var searchText = ""
+    @AppStorage("list.filter") private var filter: CompetitionFilter = .all
     @AppStorage("list.sort") private var sort: ListSort = .deadline
     @AppStorage("list.grouping") private var grouping: ListGrouping = .none
     @AppStorage("list.region") private var region: RegionFilter = .all
@@ -67,6 +67,8 @@ struct MainWindow: View {
         .task {
             model.startAutoRefresh()
         }
+        .onChange(of: filter) { model.recomputeMenuBar() }
+        .onChange(of: region) { model.recomputeMenuBar() }
     }
 }
 

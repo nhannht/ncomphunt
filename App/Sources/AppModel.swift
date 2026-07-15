@@ -13,7 +13,11 @@ final class AppModel {
     private(set) var lastReport: RefreshReport?
     private(set) var startupError: String?
 
+    /// The next-contest snapshot the menu-bar countdown label renders.
+    private(set) var menuBarStatus: MenuBarStatus?
+
     private var autoRefreshTask: Task<Void, Never>?
+    private var countdownTask: Task<Void, Never>?
 
     init() {
         let supportDir = FileManager.default.urls(
@@ -31,6 +35,7 @@ final class AppModel {
             // A memory-only container cannot fail to open.
             container = try! ModelContainer(for: Competition.self, configurations: config)
         }
+        startMenuBarCountdown()
     }
 
     func refresh() async {
@@ -59,6 +64,7 @@ final class AppModel {
         if report.newCount > 0, !isInitialSeed {
             Notifier.postNewCompetitions(report.newTitles)
         }
+        recomputeMenuBar()
     }
 
     private static let lastSearchFetchKey = "lastSearchFetch"
@@ -92,6 +98,49 @@ extension AppModel {
             while !Task.isCancelled {
                 await self?.refresh()
                 try? await Task.sleep(for: interval)
+            }
+        }
+    }
+}
+
+/// The next-contest snapshot the menu-bar countdown label renders.
+struct MenuBarStatus: Equatable {
+    let code: String
+    let countdown: String
+    let url: String
+    let title: String
+}
+
+extension AppModel {
+    /// Recompute the menu-bar countdown from the current store and the persisted
+    /// category + region filters, so the window and the menu bar agree.
+    func recomputeMenuBar(now: Date = .now) {
+        let all = (try? container.mainContext.fetch(FetchDescriptor<Competition>())) ?? []
+        let category = CompetitionFilter(
+            rawValue: UserDefaults.standard.string(forKey: "list.filter") ?? "all")?.categoryValue
+        let region = RegionFilter(
+            rawValue: UserDefaults.standard.string(forKey: "list.region") ?? "all")?.regionValue
+        guard let next = nextUpcoming(in: all, category: category, region: region, now: now),
+              let date = next.nextRelevantDate else {
+            menuBarStatus = nil
+            return
+        }
+        menuBarStatus = MenuBarStatus(
+            code: next.category.shortCode,
+            countdown: compactCountdown(to: date, now: now),
+            url: next.url,
+            title: next.title)
+    }
+
+    /// Tick the countdown once a minute, aligned to the minute boundary so the
+    /// displayed value never lags. Runs from launch, independent of any window.
+    func startMenuBarCountdown() {
+        guard countdownTask == nil else { return }
+        countdownTask = Task { [weak self] in
+            while !Task.isCancelled {
+                self?.recomputeMenuBar()
+                let seconds = Calendar.current.component(.second, from: .now)
+                try? await Task.sleep(for: .seconds(60 - seconds))
             }
         }
     }
