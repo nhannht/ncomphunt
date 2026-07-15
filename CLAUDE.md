@@ -28,12 +28,17 @@ dedupe, a failing source never kills a run.
   MLContests (keyless; `data-competitions` embedded JSON on mlcontests.com, the
   "CTFtime of AI" - keyless Kaggle/Zindi/Codabench/HuggingFace/DrivenData/AIcrowd
   coverage, `category: .ai`, open comps only), ybox.vn (embedded
-  `__INITIAL_STATE__` JSON, not HTML
-  scraping), Contest Watchers (RSS), Brave Search + Google CSE (lead discovery
+  `__INITIAL_STATE__` JSON, not HTML scraping; ybox is the VN
+  design/other/scholarship lane and does NOT feed CP/CTF/AI - those reach the
+  Vietnam filter from the aggregators above via region detection), Contest
+  Watchers (RSS), Brave Search + Google CSE (lead discovery
   over the `SearchCatalog` query set, gated by `SearchHitMapper`), Fake
   (self-test). DuckDuckGo was evaluated and rejected: its scrapeable endpoints
   serve bot-challenge pages (HTTP 202) and it has no official web-results API.
-- `Sources/CompHuntKit/Engine/` - `Classifier` (category + Vietnam detection),
+- `Sources/CompHuntKit/Engine/` - `Classifier` (category + Vietnam detection;
+  VN detection = `.vn` host, VN place names, and a `vietnamContestBrands`
+  allowlist that tags VN technical contests - VNOI, WhiteHat, Zalo, SVATTT -
+  arriving from clist/CTFtime/Codeforces under a non-.vn host and English title),
   `RefreshEngine` (TaskGroup fan-out, dedupe/upsert preserving `firstSeen`,
   prune of untracked dateless rows unseen 14 days), `SourceRegistry`
   (`SourceID`: display names, config hints, metered-search flag; the app builds

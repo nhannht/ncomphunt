@@ -65,6 +65,23 @@ private func dto(
         #expect(Classifier.region(for: dto(title: "Da Nang Hackathon")) == .vietnam)
     }
 
+    /// VN technical contests arrive from the global aggregators under a non-.vn
+    /// host and an English title; the contest-brand allowlist tags them vietnam.
+    @Test func contestBrands() {
+        #expect(Classifier.region(for: dto(title: "VNOI Cup 2026", url: "https://clist.by/x")) == .vietnam)
+        #expect(Classifier.region(for: dto(title: "WhiteHat Contest 2026", url: "https://ctftime.org/event/1")) == .vietnam)
+        #expect(Classifier.region(for: dto(title: "Zalo AI Challenge", url: "https://www.kaggle.com/z")) == .vietnam)
+        #expect(Classifier.region(for: dto(title: "SVATTT Qualifier", url: "https://ctftime.org/event/2")) == .vietnam)
+        #expect(Classifier.region(for: dto(title: "Some CTF", url: "https://ctftime.org/event/3", organizer: "Efiens")) == .vietnam)
+    }
+
+    /// The brand tokens must not leak: a spaced "white hat" is not the VN
+    /// WhiteHat brand, and unrelated global contests stay global.
+    @Test func brandTokensDoNotLeakToGlobal() {
+        #expect(Classifier.region(for: dto(title: "White Hat Security Summit", url: "https://example.com/x")) == .global)
+        #expect(Classifier.region(for: dto(title: "Google Hash Code", url: "https://codingcompetitions.withgoogle.com/x")) == .global)
+    }
+
     @Test func globalByDefault() {
         #expect(Classifier.region(for: dto(location: "Berlin, Germany")) == .global)
         #expect(Classifier.region(for: dto(location: "Online")) == .global)

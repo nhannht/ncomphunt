@@ -37,7 +37,9 @@ configuration and fill every category out of the box.
 - Codeforces API - upcoming competitive-programming rounds (keyless)
 - MLContests - open AI/ML competitions across Kaggle, Zindi, Codabench, Hugging
   Face, DrivenData, and AIcrowd (keyless)
-- ybox.vn - Vietnamese student and professional competitions
+- ybox.vn - Vietnamese design, scholarship, and general-interest competitions
+  (Vietnam's CP/CTF/AI contests arrive through the aggregators above, tagged by
+  region detection)
 - Contest Watchers - creative and design competition directory (RSS)
 - clist.by API v4 - aggregator broadening competitive programming with AtCoder,
   LeetCode, CodeChef, HackerRank and hundreds more (requires a free API key)

@@ -75,6 +75,17 @@ public enum Classifier {
         "cần thơ", "can tho", "huế",
     ]
 
+    /// VN-specific contest and organizer brands. VN technical contests reach us
+    /// from the global aggregators (clist.by, CTFtime, Codeforces, MLContests)
+    /// under a non-.vn host and an English title, so the geographic markers above
+    /// miss them; these brand tokens catch the well-known ones (VNOI Cup,
+    /// WhiteHat, Zalo AI Challenge, SVATTT, and the Efiens / KCSC / Viettel CTF
+    /// teams). Limitation: an allowlist only tags brands it enumerates, so a new
+    /// VN contest with an unknown name stays .global until its token is added.
+    private static let vietnamContestBrands = [
+        "vnoi", "whitehat", "zalo", "efiens", "kcsc", "svattt", "viettel",
+    ]
+
     public static func region(for dto: CompetitionDTO) -> Region {
         if let host = URL(string: dto.url)?.host()?.lowercased(),
            host.hasSuffix(".vn") {
@@ -82,7 +93,8 @@ public enum Classifier {
         }
         let haystack = " \(dto.title) \(dto.location) \(dto.organizer) \(dto.tags.joined(separator: " ")) "
             .lowercased()
-        if contains(haystack, any: vietnamKeywords) {
+        if contains(haystack, any: vietnamKeywords)
+            || contains(haystack, any: vietnamContestBrands) {
             return .vietnam
         }
         return .global
