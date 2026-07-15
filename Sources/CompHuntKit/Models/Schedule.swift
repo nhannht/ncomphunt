@@ -33,17 +33,18 @@ public extension CompetitionCategory {
     }
 }
 
-/// The soonest competition with a FUTURE relevant date, optionally narrowed to a
-/// category and/or region (nil means "any"). This is the countdown target: rows
-/// that are ongoing or dateless are excluded because there is nothing to count
-/// down to. Ties break on the earlier date; equal dates keep an arbitrary order.
-public func nextUpcoming(
+/// Competitions with a FUTURE relevant date, soonest first, optionally narrowed
+/// to a category and/or region (nil means "any") and capped at `limit`. Rows that
+/// are ongoing or dateless are excluded because there is nothing to count down to.
+/// Ties break on the earlier date; equal dates keep an arbitrary order.
+public func upcomingContests(
     in competitions: [Competition],
     category: CompetitionCategory?,
     region: Region?,
+    limit: Int? = nil,
     now: Date = .now
-) -> Competition? {
-    competitions
+) -> [Competition] {
+    let sorted = competitions
         .filter { competition in
             guard competition.isCurrent(asOf: now) else { return false }
             if let category, competition.category != category { return false }
@@ -51,7 +52,20 @@ public func nextUpcoming(
             guard let next = competition.nextRelevantDate, next >= now else { return false }
             return true
         }
-        .min { ($0.nextRelevantDate ?? .distantFuture) < ($1.nextRelevantDate ?? .distantFuture) }
+        .sorted { ($0.nextRelevantDate ?? .distantFuture) < ($1.nextRelevantDate ?? .distantFuture) }
+    guard let limit else { return sorted }
+    return Array(sorted.prefix(limit))
+}
+
+/// The soonest upcoming competition matching the filters, or nil. The countdown
+/// target for the menu bar; `upcomingContests(...).first`.
+public func nextUpcoming(
+    in competitions: [Competition],
+    category: CompetitionCategory?,
+    region: Region?,
+    now: Date = .now
+) -> Competition? {
+    upcomingContests(in: competitions, category: category, region: region, limit: 1, now: now).first
 }
 
 /// Compact countdown from `now` to `target`, sized for the menu bar: "2h14m",
