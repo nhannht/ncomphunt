@@ -7,31 +7,11 @@ public enum ICSBuilder {
     /// One-VEVENT calendar for a competition. Explicit start/end dates bound
     /// the event when known; otherwise the registration deadline becomes a
     /// one-hour block ending at the deadline, titled "Deadline: <title>".
-    /// Returns nil when there is no date to anchor an event on.
+    /// Returns nil when there is no date to anchor an event on. The event shape
+    /// comes from the shared `CalendarEventPlan` so this `.ics` and the live
+    /// EventKit calendar never diverge.
     public static func calendar(for competition: Competition, now: Date = .now) -> String? {
-        let summary: String
-        let start: Date
-        let end: Date
-        if let eventStart = competition.startDate {
-            summary = competition.title
-            start = eventStart
-            end = competition.endDate ?? eventStart.addingTimeInterval(2 * 3600)
-        } else if let deadline = competition.registrationDeadline {
-            summary = "Deadline: \(competition.title)"
-            start = deadline.addingTimeInterval(-3600)
-            end = deadline
-        } else {
-            return nil
-        }
-
-        var description = ["URL: \(competition.url)"]
-        if !competition.organizer.isEmpty {
-            description.append("Organizer: \(competition.organizer)")
-        }
-        if !competition.prize.isEmpty {
-            description.append("Prize: \(competition.prize)")
-        }
-        description.append("Found via \(competition.source) (nCompHunt)")
+        guard let plan = CalendarEventPlan.plan(for: competition, now: now) else { return nil }
 
         var lines = [
             "BEGIN:VCALENDAR",
@@ -40,21 +20,21 @@ public enum ICSBuilder {
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
             "BEGIN:VEVENT",
-            "UID:\(escape(competition.key))@ncomphunt",
+            "UID:\(escape(plan.key))@ncomphunt",
             "DTSTAMP:\(format(now))",
-            "DTSTART:\(format(start))",
-            "DTEND:\(format(end))",
-            "SUMMARY:\(escape(summary))",
-            "DESCRIPTION:\(escape(description.joined(separator: "\n")))",
-            "URL:\(escape(competition.url))",
+            "DTSTART:\(format(plan.start))",
+            "DTEND:\(format(plan.end))",
+            "SUMMARY:\(escape(plan.title))",
+            "DESCRIPTION:\(escape(plan.notes))",
+            "URL:\(escape(plan.url))",
         ]
-        if !competition.location.isEmpty {
-            lines.append("LOCATION:\(escape(competition.location))")
+        if !plan.location.isEmpty {
+            lines.append("LOCATION:\(escape(plan.location))")
         }
         lines += [
             "BEGIN:VALARM",
             "ACTION:DISPLAY",
-            "DESCRIPTION:\(escape(summary))",
+            "DESCRIPTION:\(escape(plan.title))",
             "TRIGGER:-P1D",
             "END:VALARM",
             "END:VEVENT",
