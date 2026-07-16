@@ -4,12 +4,19 @@
 #   scripts/release.sh build      archive + export a Developer ID signed app
 #   scripts/release.sh notarize   notarize + staple app, build DMG, notarize
 #                                 + staple DMG (needs stored notarytool creds)
+#   scripts/release.sh appstore   archive with Mac App Store signing and upload
+#                                 to App Store Connect (or export a .pkg for
+#                                 Transporter when no ASC API key is set)
 #
 # Prereqs:
 #   - "Developer ID Application" certificate in the login keychain
 #   - notarytool credentials stored once via:
 #       xcrun notarytool store-credentials "$NOTARY_PROFILE" \
 #         --apple-id <apple-id> --team-id V3P5U9Z68M --password <app-specific>
+#   - appstore lane: an App Store Connect API key (App Manager role) exported as
+#       ASC_KEY_P8 (path to the .p8), ASC_KEY_ID, ASC_ISSUER_ID
+#     Without all three, the lane exports a signed .pkg to upload manually with
+#     Transporter.app instead of uploading directly.
 set -Eeuo pipefail
 # Any UNGUARDED failure aborts loudly with the line number (set -E makes the
 # ERR trap fire inside functions too). Guarded steps print their own FATAL line.
@@ -171,8 +178,72 @@ notarize() {
   shasum -a 256 "$DMG"
 }
 
+# --- Mac App Store lane -----------------------------------------------------
+# Separate archive + export dirs so DMG artifacts are never clobbered. Signing
+# is AUTOMATIC here (overrides the manual Developer ID settings in project.yml):
+# with -allowProvisioningUpdates, xcodebuild creates/fetches the Apple
+# Distribution + Mac Installer Distribution certs and the MAS provisioning
+# profiles for both bundle ids. caffeinate for the same reason as notarize:
+# idle sleep once killed an upload mid-flight.
+appstore() {
+  local mas_dir="$BUILD_DIR/appstore"
+  local mas_archive="$mas_dir/CompHunt-mas.xcarchive"
+  local mas_export="$mas_dir/export"
+  local auth_flags=()
+  local destination="upload"
+
+  if [ -n "${ASC_KEY_P8:-}" ] && [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ]; then
+    test -f "$ASC_KEY_P8" || { echo "FATAL: ASC_KEY_P8 ($ASC_KEY_P8) not found" >&2; exit 1; }
+    auth_flags=(-authenticationKeyPath "$ASC_KEY_P8"
+                -authenticationKeyID "$ASC_KEY_ID"
+                -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+  else
+    destination="export"
+    echo "NOTE: ASC_KEY_P8/ASC_KEY_ID/ASC_ISSUER_ID not all set."
+    echo "      Exporting a .pkg to upload manually with Transporter.app."
+    echo "      (automatic signing then relies on the Apple ID session in Xcode)"
+  fi
+
+  rm -rf "$mas_dir"
+  mkdir -p "$mas_dir"
+
+  (cd "$ROOT/App" && xcodegen generate)
+  xcodebuild -project "$ROOT/App/CompHunt.xcodeproj" -scheme CompHunt \
+    -configuration Release -archivePath "$mas_archive" archive \
+    CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM=V3P5U9Z68M \
+    -allowProvisioningUpdates ${auth_flags[@]+"${auth_flags[@]}"}
+
+  cat > "$mas_dir/ExportOptions.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key><string>app-store-connect</string>
+  <key>teamID</key><string>V3P5U9Z68M</string>
+  <key>signingStyle</key><string>automatic</string>
+  <key>destination</key><string>$destination</string>
+</dict>
+</plist>
+PLIST
+
+  caffeinate -i xcodebuild -exportArchive -archivePath "$mas_archive" \
+    -exportOptionsPlist "$mas_dir/ExportOptions.plist" \
+    -exportPath "$mas_export" \
+    -allowProvisioningUpdates ${auth_flags[@]+"${auth_flags[@]}"}
+
+  if [ "$destination" = "upload" ]; then
+    echo "Uploaded $VERSION (build from $mas_archive) to App Store Connect."
+    echo "Track processing in ASC > TestFlight/Builds; attach to the version when Ready."
+  else
+    echo "Exported for manual upload:"
+    ls -l "$mas_export"
+    echo "Open Transporter.app and deliver the .pkg above."
+  fi
+}
+
 case "${1:-}" in
   build) build ;;
   notarize) notarize ;;
-  *) echo "usage: scripts/release.sh {build|notarize}" >&2; exit 1 ;;
+  appstore) appstore ;;
+  *) echo "usage: scripts/release.sh {build|notarize|appstore}" >&2; exit 1 ;;
 esac
