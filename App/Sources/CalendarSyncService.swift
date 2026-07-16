@@ -7,10 +7,10 @@ import Foundation
 /// of leaving a stale one-off `.ics` import. Native by construction: no website,
 /// browser extension, or bot can offer a live system calendar.
 ///
-/// The app is non-sandboxed, so EventKit needs the
-/// `NSCalendarsFullAccessUsageDescription` string but no entitlement. Full
-/// (not write-only) access is required because reconcile reads, updates, and
-/// deletes its own events, which write-only access forbids.
+/// The sandboxed app needs both the `NSCalendarsFullAccessUsageDescription`
+/// string and the `com.apple.security.personal-information.calendars`
+/// entitlement. Full (not write-only) access is required because reconcile
+/// reads, updates, and deletes its own events, which write-only access forbids.
 @MainActor
 final class CalendarSyncService {
     static let shared = CalendarSyncService()
@@ -161,6 +161,15 @@ final class CalendarSyncService {
     private func ensureCalendar() -> EKCalendar? {
         if let id = UserDefaults.standard.string(forKey: Key.calendarID),
            let existing = store.calendar(withIdentifier: id) {
+            return existing
+        }
+
+        // The stored identifier is lost when prefs move into the sandbox
+        // container on this build's first launch, so adopt a calendar we
+        // created before rather than creating a duplicate of it.
+        if let existing = store.calendars(for: .event)
+            .first(where: { $0.title == calendarTitle }) {
+            UserDefaults.standard.set(existing.calendarIdentifier, forKey: Key.calendarID)
             return existing
         }
 
