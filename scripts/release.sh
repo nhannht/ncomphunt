@@ -208,9 +208,13 @@ appstore() {
   mkdir -p "$mas_dir"
 
   (cd "$ROOT/App" && xcodegen generate)
+  # Archive signs with Apple Development (entitlements embed at SIGNING time -
+  # an empty identity produces unsigned binaries and ASC rejects with 90296
+  # "App sandbox not enabled"); the export re-signs for App Store distribution.
   xcodebuild -project "$ROOT/App/CompHunt.xcodeproj" -scheme CompHunt \
     -configuration Release -archivePath "$mas_archive" archive \
-    CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY= DEVELOPMENT_TEAM=V3P5U9Z68M \
+    CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
+    DEVELOPMENT_TEAM=V3P5U9Z68M \
     -allowProvisioningUpdates ${auth_flags[@]+"${auth_flags[@]}"}
 
   cat > "$mas_dir/ExportOptions.plist" <<PLIST
