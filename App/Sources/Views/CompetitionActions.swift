@@ -65,8 +65,9 @@ struct YouTrackMenuItem: View {
 
     @Environment(\.modelContext) private var context
 
-    /// Config is read from disk once per app run.
-    private static let client = YouTrackClient()
+    /// Re-created per access so a YouTrack config saved in Settings applies
+    /// without a relaunch; the failable init only reads the stored config.
+    private static var client: YouTrackClient? { YouTrackClient() }
 
     var body: some View {
         if let issueID = competition.trackedIssueID {
