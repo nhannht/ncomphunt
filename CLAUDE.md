@@ -9,6 +9,28 @@ contests, Vietnam-first and global. Sibling of `../job-tracker/recon` (the Pytho
 job-recon engine) and follows its proven patterns: source plugins, normalized-URL
 dedupe, a failing source never kills a run.
 
+## Design file (Sketch, source of truth)
+
+`~/Documents/sketch/ncompthunt.sketch` (outside the repo) is the design source
+of truth. Attached library: Apple macOS 27 UI Kit (id
+`E5937708-71B4-4D44-BB64-4B0E2CF20DE0`) - reuse its symbols/styles for any UI
+chrome; the kit ships no widget component, so the Widget Kit card is hand-built.
+One page, "CompHunt UI":
+
+- UI mocks, canonical (kit-based, updated to 1.0.0): `Main Window Kit`,
+  `Settings Kit` (API Keys + Calendar sections, editable YouTrack),
+  `Menu Bar Kit`, `Actions Menu Kit`, `Widget Kit`
+- Legacy hand-rolled mocks (pre-kit, historical): `Main Window`, `Settings`,
+  `Menu Bar Extra`, `Actions Menu`
+- `appstore screenshot` - user staging frame: raw 1.0.0 captures + MacBook bezel
+- `github showcase` - README hero composition
+- `AS 1 Hero` .. `AS 5 Widget` - the five 2880x1800 App Store artboards
+  (gradient #D825FC>#1C3D7A>#3574F0, white SF Pro Display caption, floating
+  panel); exported 1x to `showcase/appstore/as*.png` for ASC upload
+
+Structural changes to the document (pages/artboards/symbols) must update this
+map in the same turn.
+
 ## Build and test (CLI only, never JetBrains build)
 
 - Library tests: `swift test`
