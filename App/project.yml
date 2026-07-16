@@ -30,14 +30,14 @@ targets:
         # Partial plist merged with the generated keys: adds the ncomphunt://
         # URL scheme the widget deep-links into.
         INFOPLIST_FILE: CompHunt-Info.plist
-        # App Group (widget snapshot sharing); app itself stays non-sandboxed.
+        # Sandbox + App Group + network/calendar/file-picker grants live in the
+        # entitlements file; API keys come from the Keychain, not ~/.claude.
         CODE_SIGN_ENTITLEMENTS: CompHunt.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Nguyen Huu Thien Nhan. MIT License."
-        # No sandbox in either config: the app reads ~/.claude config files.
         CODE_SIGN_STYLE: Manual
-        ENABLE_APP_SANDBOX: NO
+        ENABLE_APP_SANDBOX: YES
         COMBINE_HIDPI_IMAGES: YES
       configs:
         # Debug: ad-hoc local signature, debugger-friendly.

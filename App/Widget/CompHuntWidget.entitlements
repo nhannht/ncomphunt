@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<!-- App extensions run sandboxed; the App Group lets the widget read the
-	     snapshot the (non-sandboxed) app writes into the shared container. -->
+	     snapshot the app writes into the shared container. -->
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
 	<key>com.apple.security.application-groups</key>

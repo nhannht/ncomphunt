@@ -2,8 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- The app stays NON-sandboxed (it reads ~/.claude config files); it only
-	     needs the App Group to share the widget snapshot. -->
+	<!-- Sandboxed everywhere (Mac App Store requirement, single behavior across
+	     DMG/Homebrew/MAS): network.client for the source fetches, calendars for
+	     the EventKit sync, user-selected read-only for the secrets.yml import
+	     panel, App Group to share the widget snapshot. API keys live in the
+	     Keychain (Settings > API Keys), not in ~/.claude files. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.personal-information.calendars</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-only</key>
+	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
 		<string>V3P5U9Z68M.group.com.nhannht.ncomphunt</string>

@@ -8,6 +8,10 @@
 	     the dedicated-calendar sync. -->
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>nCompHunt keeps a dedicated calendar of your competition deadlines and start times up to date.</string>
+	<!-- HTTPS-only networking: exempt from export compliance, pre-answers the
+	     App Store Connect encryption question per upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
