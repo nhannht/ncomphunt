@@ -61,7 +61,8 @@ import Testing
             CLIST_USERNAME: "nhannht"
             CLIST_API_KEY: "abc123"
             """)
-        let creds = SecretsReader.clistCredentials(secretsPath: path)
+        let creds = SecretsReader.clistCredentials(
+            secretsPath: path, store: InMemoryCredentialStore())
         #expect(creds?.username == "nhannht")
         #expect(creds?.apiKey == "abc123")
     }
@@ -71,10 +72,12 @@ import Testing
             CLIST_USERNAME: "your-clist-username"
             CLIST_API_KEY: "your-clist-api-key"
             """)
-        #expect(SecretsReader.clistCredentials(secretsPath: placeholder) == nil)
+        #expect(SecretsReader.clistCredentials(
+            secretsPath: placeholder, store: InMemoryCredentialStore()) == nil)
 
         let missing = URL(fileURLWithPath: "/nonexistent/secrets.yml")
-        #expect(SecretsReader.clistCredentials(secretsPath: missing) == nil)
+        #expect(SecretsReader.clistCredentials(
+            secretsPath: missing, store: InMemoryCredentialStore()) == nil)
     }
 
     @Test func readsYouTrackConfigAndStripsMCPSuffix() throws {
@@ -89,7 +92,8 @@ import Testing
               }
             }
             """)
-        let config = SecretsReader.youTrackConfig(claudeJSONPath: path)
+        let config = SecretsReader.youTrackConfig(
+            claudeJSONPath: path, store: InMemoryCredentialStore())
         #expect(config?.baseURL == "https://yt.example.com")
         #expect(config?.token == "perm:token123")
     }

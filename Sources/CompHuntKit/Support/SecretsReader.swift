@@ -33,10 +33,13 @@ public struct YouTrackConfig: Sendable {
     }
 }
 
-/// Reads local machine config. Nothing here is ever hardcoded or committed:
-/// clist credentials live in ~/.claude/secrets.yml (flat UPPER_SNAKE_CASE keys,
-/// the repo-wide schema), the YouTrack URL and bearer token in ~/.claude.json
-/// under mcpServers.youtrack (same discovery as job-recon's config.py).
+/// Reads local machine config. Nothing here is ever hardcoded or committed.
+/// Each logical config resolves Keychain-first (a `CredentialStoring`, the
+/// sandbox-safe source) and falls back to legacy dev files: clist/Brave/Google
+/// keys in ~/.claude/secrets.yml (flat UPPER_SNAKE_CASE keys, the repo-wide
+/// schema), the YouTrack URL and bearer token in ~/.claude.json under
+/// mcpServers.youtrack (same discovery as job-recon's config.py). The
+/// placeholder/empty filter applies to values from both origins.
 public enum SecretsReader {
     public static var defaultSecretsPath: URL {
         FileManager.default.homeDirectoryForCurrentUser
@@ -48,7 +51,14 @@ public enum SecretsReader {
             .appending(path: ".claude.json")
     }
 
-    public static func clistCredentials(secretsPath: URL = defaultSecretsPath) -> ClistCredentials? {
+    public static func clistCredentials(
+        secretsPath: URL = defaultSecretsPath,
+        store: CredentialStoring = KeychainCredentialStore.shared
+    ) -> ClistCredentials? {
+        if let username = nonPlaceholder(store.get(.CLIST_USERNAME)),
+           let apiKey = nonPlaceholder(store.get(.CLIST_API_KEY)) {
+            return ClistCredentials(username: username, apiKey: apiKey)
+        }
         guard
             let root = loadSecrets(secretsPath),
             let username = nonPlaceholder(root["CLIST_USERNAME"]),
@@ -59,12 +69,25 @@ public enum SecretsReader {
         return ClistCredentials(username: username, apiKey: apiKey)
     }
 
-    public static func braveKey(secretsPath: URL = defaultSecretsPath) -> String? {
+    public static func braveKey(
+        secretsPath: URL = defaultSecretsPath,
+        store: CredentialStoring = KeychainCredentialStore.shared
+    ) -> String? {
+        if let key = nonPlaceholder(store.get(.BRAVE_API_KEY)) {
+            return key
+        }
         guard let root = loadSecrets(secretsPath) else { return nil }
         return nonPlaceholder(root["BRAVE_API_KEY"])
     }
 
-    public static func googleCSE(secretsPath: URL = defaultSecretsPath) -> GoogleCSEConfig? {
+    public static func googleCSE(
+        secretsPath: URL = defaultSecretsPath,
+        store: CredentialStoring = KeychainCredentialStore.shared
+    ) -> GoogleCSEConfig? {
+        if let apiKey = nonPlaceholder(store.get(.GOOGLE_CSE_KEY)),
+           let engineID = nonPlaceholder(store.get(.GOOGLE_CSE_CX)) {
+            return GoogleCSEConfig(apiKey: apiKey, engineID: engineID)
+        }
         guard
             let root = loadSecrets(secretsPath),
             let apiKey = nonPlaceholder(root["GOOGLE_CSE_KEY"]),
@@ -75,7 +98,23 @@ public enum SecretsReader {
         return GoogleCSEConfig(apiKey: apiKey, engineID: engineID)
     }
 
-    public static func youTrackConfig(claudeJSONPath: URL = defaultClaudeJSONPath) -> YouTrackConfig? {
+    public static func youTrackConfig(
+        claudeJSONPath: URL = defaultClaudeJSONPath,
+        store: CredentialStoring = KeychainCredentialStore.shared
+    ) -> YouTrackConfig? {
+        if let base = nonPlaceholder(store.get(.YOUTRACK_BASE_URL)),
+           let rawToken = nonPlaceholder(store.get(.YOUTRACK_TOKEN)) {
+            var url = base
+            while url.hasSuffix("/") {
+                url.removeLast()
+            }
+            let token = rawToken
+                .replacingOccurrences(of: "Bearer ", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            if !url.isEmpty, !token.isEmpty {
+                return YouTrackConfig(baseURL: url, token: token)
+            }
+        }
         guard
             let data = try? Data(contentsOf: claudeJSONPath),
             let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

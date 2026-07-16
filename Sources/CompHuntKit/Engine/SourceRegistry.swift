@@ -33,9 +33,9 @@ public enum SourceID: String, CaseIterable, Sendable, Identifiable {
     /// What the user must configure before the source can run; nil = keyless.
     public var configHint: String? {
         switch self {
-        case .clist: "CLIST_USERNAME + CLIST_API_KEY in ~/.claude/secrets.yml"
-        case .brave: "BRAVE_API_KEY in ~/.claude/secrets.yml"
-        case .googlesearch: "GOOGLE_CSE_KEY + GOOGLE_CSE_CX in ~/.claude/secrets.yml"
+        case .clist: "CLIST_USERNAME + CLIST_API_KEY in Settings > API Keys"
+        case .brave: "BRAVE_API_KEY in Settings > API Keys"
+        case .googlesearch: "GOOGLE_CSE_KEY + GOOGLE_CSE_CX in Settings > API Keys"
         default: nil
         }
     }
