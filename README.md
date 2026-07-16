@@ -1,5 +1,5 @@
 
-![](./showcase/Showcase%20Hero.png)
+![](./showcase/appstore/as1-hero.png)
 
 # nCompHunt
 
@@ -8,7 +8,7 @@ AI challenges, CTFs, hackathons, and design contests - in Vietnam and globally,
 and lists them with sort and group controls, category and region filters, a menu
 bar extra, and native notifications for new finds.
 
-![](./showcase/ncomphunt-bar.png)
+![](./showcase/appstore/as2-menubar.png)
 
 Built in Swift 6 / SwiftUI with SwiftData persistence. No account, no telemetry,
 no server: the app talks directly to the public sources below and everything
