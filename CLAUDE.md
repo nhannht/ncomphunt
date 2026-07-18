@@ -103,3 +103,35 @@ map in the same turn.
   network in tests.
 - Dedupe key: lowercased URL without query string or trailing slash.
 - showcase/ must hold 2+ real screenshots before the product is called done.
+
+## Website (`website/`)
+
+Marketing site, Apple liquid-glass style over the brand gradient
+(#D825FC > #1C3D7A > #3574F0). Next.js 16 App Router + Tailwind v4 + shadcn
+(nova preset) + React Bits components (FloatingLines, GlassSurface, GooeyNav,
+SpecularButton, SplitText, GradientText, ShinyText, SpotlightCard, LogoLoop,
+CardSwap, Carousel, Dock; Aurora, GlareHover, StarBorder installed but unused -
+installed via `bunx shadcn add https://reactbits.dev/r/<Name>-TS-TW` into
+`components/`). Site-wide background is FloatingLines (three.js,
+`@types/three` dev dep) mounted fixed inset-0 -z-10 in `site/Background.tsx`
+so it follows the viewport on scroll. Local customizations: FloatingLines
+pointer listeners moved canvas -> window (canvas is pointer-events-none);
+Carousel gained an optional `image` item field + glass palette; GooeyNav
+dropped its black-backdrop gooey blend (leaks inside GlassSurface's
+backdrop-filter stacking context) in favor of plain particles colored by
+`--color-1..4` in globals.css.
+bun only: `cd website && bun run build`; dev server binds loopback/Tailscale,
+never 0.0.0.0. Page sections live in `components/site/`; copy and links in
+`lib/site.ts` - set `appStoreUrl` there once the App Store listing is live.
+
+Deployed at https://ncomphunt.nhannht.io.vn : `output: "export"` static build
+(`images.unoptimized`, sitemap/robots `force-static`) rsynced from `out/` to
+sg-hs `/var/www/ncomphunt.nhannht.io.vn`, nginx site `ncomphunt-nhannht-io-vn`
++ certbot TLS, Cloudflare proxied A record (zone nhannht.io.vn, token in
+`~/.config/cloudflare/api_token.env`). Redeploy = build + same rsync. Note:
+with `output: "export"`, `next start` no longer serves - preview `out/` with
+any static server. Screenshots are copied from `showcase/`
+into `website/public/screenshots/` (hero uses `raw/lightmodemain.png`; the
+gallery uses the five `appstore/as*.png` renders). SEO: metadata + OpenGraph in
+`app/layout.tsx`, JSON-LD SoftwareApplication in `app/page.tsx`,
+`app/sitemap.ts`, `app/robots.ts`, favicon generated at `app/icon.png`.
