@@ -9,7 +9,7 @@ nCompHunt
 
 ## Subtitle (28 / 30)
 
-Track every contest deadline
+Track every contest information
 
 ## Promotional text (164 / 170)
 
