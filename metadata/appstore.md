@@ -53,7 +53,17 @@ https://github.com/nhannht/ncomphunt/issues
 
 ## Marketing URL
 
-https://github.com/nhannht/ncomphunt
+https://ncomphunt.nhannht.io.vn
+
+## Privacy Policy URL
+
+https://ncomphunt.nhannht.io.vn/privacy
+
+## App Privacy (nutrition label questionnaire)
+
+Data Not Collected - the app collects no data of any kind (consistent with the
+App Review notes below: no accounts, no analytics, no telemetry, no
+developer-run server).
 
 ## Copyright
 
