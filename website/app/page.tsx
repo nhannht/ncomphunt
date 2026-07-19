@@ -20,7 +20,7 @@ const jsonLd = {
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   license: "https://opensource.org/license/mit",
   url: site.url,
-  downloadUrl: site.appStoreUrl || site.github,
+  downloadUrl: site.downloadUrl,
   screenshot: `${site.url}/screenshots/as1-hero.png`,
   author: { "@type": "Person", name: site.author, url: site.github },
 };

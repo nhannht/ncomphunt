@@ -122,7 +122,11 @@ backdrop-filter stacking context) in favor of plain particles colored by
 `--color-1..4` in globals.css.
 bun only: `cd website && bun run build`; dev server binds loopback/Tailscale,
 never 0.0.0.0. Page sections live in `components/site/`; copy and links in
-`lib/site.ts` - set `appStoreUrl` there once the App Store listing is live.
+`lib/site.ts` - `downloadUrl` is the evergreen DMG link
+(`releases/latest/download/ncomphunt.dmg`); every GitHub release must upload an
+unversioned `ncomphunt.dmg` asset alongside the versioned one so the site never
+needs a rebuild per app release. Distribution is direct (GitHub release DMG +
+Homebrew cask `nhannht/homebrew-tap`), not the Mac App Store.
 
 Deployed at https://ncomphunt.nhannht.io.vn : `output: "export"` static build
 (`images.unoptimized`, sitemap/robots `force-static`) rsynced from `out/` to

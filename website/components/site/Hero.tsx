@@ -47,30 +47,18 @@ export default function Hero() {
         </p>
 
         <div id="download" className="mt-10 flex flex-wrap items-center justify-center gap-4">
-          {site.appStoreUrl ? (
-            <a
-              href={site.appStoreUrl}
-              className="inline-flex items-center gap-3 rounded-2xl bg-white px-6 py-3 text-black transition-opacity hover:opacity-85"
-            >
-              <AppleIcon className="size-7" />
-              <span className="text-left leading-tight">
-                <span className="block text-[11px] font-medium uppercase tracking-wide text-black/60">
-                  Download on the
-                </span>
-                <span className="block text-lg font-semibold">Mac App Store</span>
+          <a
+            href={site.downloadUrl}
+            className="inline-flex items-center gap-3 rounded-2xl bg-white px-6 py-3 text-black transition-opacity hover:opacity-85"
+          >
+            <AppleIcon className="size-7" />
+            <span className="text-left leading-tight">
+              <span className="block text-[11px] font-medium uppercase tracking-wide text-black/60">
+                Signed and notarized
               </span>
-            </a>
-          ) : (
-            <div className="inline-flex cursor-default items-center gap-3 rounded-2xl bg-white px-6 py-3 text-black">
-              <AppleIcon className="size-7" />
-              <span className="text-left leading-tight">
-                <span className="block text-[11px] font-medium uppercase tracking-wide text-black/60">
-                  Coming soon to the
-                </span>
-                <span className="block text-lg font-semibold">Mac App Store</span>
-              </span>
-            </div>
-          )}
+              <span className="block text-lg font-semibold">Download for Mac</span>
+            </span>
+          </a>
 
           <SpecularButton
             size="lg"
@@ -91,7 +79,13 @@ export default function Hero() {
           </SpecularButton>
         </div>
 
-        <p className="mt-4 text-sm text-white/40">{site.requirement}</p>
+        <code className="glass mt-5 rounded-full px-4 py-1.5 text-sm text-white/70">
+          {site.brew}
+        </code>
+
+        <p className="mt-4 text-sm text-white/40">
+          {site.requirement} - signed with Developer ID, notarized by Apple
+        </p>
 
         <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
           {categories.map(category => (

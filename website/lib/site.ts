@@ -7,8 +7,12 @@ export const site = {
   github: "https://github.com/nhannht/ncomphunt",
   issues: "https://github.com/nhannht/ncomphunt/issues",
   privacy: "/privacy",
-  // Fill in the App Store link once the listing is live.
-  appStoreUrl: "",
+  // Stable across releases: every GitHub release uploads an unversioned
+  // ncomphunt.dmg asset alongside the versioned one.
+  downloadUrl:
+    "https://github.com/nhannht/ncomphunt/releases/latest/download/ncomphunt.dmg",
+  releases: "https://github.com/nhannht/ncomphunt/releases",
+  brew: "brew install --cask nhannht/tap/ncomphunt",
   requirement: "Requires macOS 15 or later",
   author: "Nguyen Huu Thien Nhan",
 } as const;
