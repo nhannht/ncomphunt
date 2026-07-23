@@ -24,7 +24,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.ncomphunt
         PRODUCT_NAME: nCompHunt
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "5"
+        CURRENT_PROJECT_VERSION: "6"
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: YES
         # Partial plist merged with the generated keys: adds the ncomphunt://
@@ -62,7 +62,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.ncomphunt.widget
         PRODUCT_NAME: CompHuntWidget
         MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "5"
+        CURRENT_PROJECT_VERSION: "6"
         SWIFT_VERSION: "6.0"
         GENERATE_INFOPLIST_FILE: YES
         # Partial plist merged with the generated keys: marks this as a WidgetKit

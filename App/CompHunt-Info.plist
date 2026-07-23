@@ -7,7 +7,7 @@
 	     full-access calendar usage string EventKit shows when the user opts in to
 	     the dedicated-calendar sync. -->
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>nCompHunt keeps a dedicated calendar of your competition deadlines and start times up to date.</string>
+	<string>nCompHunt adds upcoming competition deadlines to its own calendar, so a CTF starting next Saturday shows up next to the rest of your week. Full access lets it update or remove those events when a contest is rescheduled or cancelled. It does not use the events in your other calendars.</string>
 	<!-- HTTPS-only networking: exempt from export compliance, pre-answers the
 	     App Store Connect encryption question per upload. -->
 	<key>ITSAppUsesNonExemptEncryption</key>
