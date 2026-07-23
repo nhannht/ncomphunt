@@ -6,7 +6,8 @@
 Native macOS app that finds and indexes competitions - competitive programming,
 AI challenges, CTFs, hackathons, and design contests - in Vietnam and globally,
 and lists them with sort and group controls, category and region filters, a menu
-bar extra, and native notifications for new finds.
+bar extra, native notifications for new finds, and an optional sync into a
+dedicated Apple Calendar that keeps every deadline up to date.
 
 ![](./showcase/appstore/as2-menubar.png)
 
@@ -49,23 +50,20 @@ configuration and fill every category out of the box.
 
 ## Configuration (optional API keys)
 
-Keyed sources read credentials from `~/.claude/secrets.yml`, a flat YAML file
-of UPPER_SNAKE_CASE keys:
+Enter optional API keys under **Settings > API Keys**. Keys are stored securely
+in the macOS Keychain, and each keyed source turns on as soon as its key is
+present. If you used an older build backed by a `~/.claude/secrets.yml` file, the
+one-tap **Import from secrets.yml** button migrates those keys into the Keychain.
 
-```yaml
-CLIST_USERNAME: your-clist-username
-CLIST_API_KEY: your-clist-api-key
-BRAVE_API_KEY: your-brave-search-api-key
-GOOGLE_CSE_KEY: your-google-api-key
-GOOGLE_CSE_CX: your-programmable-search-engine-id
-```
+The keys are:
 
-Missing or placeholder values simply disable that source. In-app key management
-(Keychain-backed Settings, no YAML file) is the next milestone on the roadmap.
+- `CLIST_USERNAME` + `CLIST_API_KEY` - clist.by
+- `BRAVE_API_KEY` - Brave Search
+- `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX` - Google Programmable Search
 
-The optional YouTrack action reads its base URL and bearer token from
-`~/.claude.json` under `mcpServers.youtrack` and files one Task issue per
-competition into a `COMP` project.
+Missing keys simply disable that source. The optional YouTrack action reads its
+base URL and bearer token from `~/.claude.json` under `mcpServers.youtrack` and
+files one Task issue per competition into a `COMP` project.
 
 ## Actions
 

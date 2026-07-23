@@ -37,6 +37,13 @@ map in the same turn.
 - App build: `cd App && xcodegen generate && xcodebuild -project CompHunt.xcodeproj -scheme CompHunt build 2>&1 | tail -50`
 - `App/CompHunt.xcodeproj` is generated from `App/project.yml` (XcodeGen) and
   gitignored - edit `project.yml`, never the xcodeproj.
+- Release: `scripts/release.sh {build|notarize|appstore}`. `notarize` builds the
+  Developer ID DMG (needs a stored `notarytool` keychain profile). `appstore`
+  archives with Apple Distribution signing and uploads to App Store Connect when
+  the ASC API key env vars (`ASC_KEY_P8` / `ASC_KEY_ID` / `ASC_ISSUER_ID`) are
+  set - a key lives at `~/.appstoreconnect/private/` - otherwise it exports a
+  `.pkg` for manual Transporter upload. Bump `CURRENT_PROJECT_VERSION` in
+  `project.yml` for every new App Store build.
 
 ## Layout
 
@@ -67,19 +74,33 @@ map in the same turn.
   its source list from it per refresh)
 - `Sources/CompHuntKit/YouTrack/` - sink filing COMP issues (a small menu item
   in the app, not a headline button)
-- `Sources/CompHuntKit/Support/` - `SecretsReader`, HTTP wrapper, `ICSBuilder`
-  (calendar export used by the Add to Calendar action; no EventKit)
+- `Sources/CompHuntKit/Support/` - `SecretsReader` (resolves Keychain-first,
+  then the `~/.claude/secrets.yml` fallback), `CredentialStore`
+  (`KeychainCredentialStore`), `SecretsImporter` (one-time secrets.yml -> Keychain
+  migration), HTTP wrapper, `ICSBuilder` (single-contest `.ics` export for the
+  Add to Calendar action), `CalendarEventPlan` (reconciliation model for the
+  EventKit calendar sync; the sync itself is app-layer in
+  `App/Sources/CalendarSyncService.swift`, since EventKit is unavailable to the
+  sandboxed library target)
 - `App/` - SwiftUI app: main window (NavigationSplitView, sort/group toolbar
   menu, per-row context menu = `CompetitionActionsMenu`) + MenuBarExtra +
-  refresh timer + UNUserNotifications. Settings has per-source checkboxes
-  (UserDefaults `source.<id>.enabled` via `SourcePreferences`); search sources
-  additionally gate on a 24h window (`lastSearchFetch`) recorded only after a
-  successful search run.
+  refresh timer + UNUserNotifications + `CalendarSyncService` (opt-in EventKit
+  sync into a dedicated "nCompHunt" calendar; needs
+  `NSCalendarsFullAccessUsageDescription` + the `personal-information.calendars`
+  entitlement). Settings has per-source checkboxes (UserDefaults
+  `source.<id>.enabled` via `SourcePreferences`) plus an API Keys section that
+  stores keys in the Keychain (`CredentialStore`) with an "Import from
+  secrets.yml" migration; search sources additionally gate on a 24h window
+  (`lastSearchFetch`) recorded only after a successful search run.
 
 ## Secrets and config (never hardcode, never commit)
 
-- All keys live flat in `~/.claude/secrets.yml` (parsed with Yams, UPPER_SNAKE,
-  "your-" placeholder values rejected). Missing key = the source reports
+- Keys resolve Keychain-first: the app stores them in the macOS Keychain
+  (`KeychainCredentialStore`, managed under Settings > API Keys). The flat
+  `~/.claude/secrets.yml` (parsed with Yams, UPPER_SNAKE, "your-" placeholder
+  values rejected) is the dev/CLI fallback and the source for the one-time
+  `SecretsImporter` migration; the sandboxed App Store build cannot read it, so
+  there it is Keychain-only. Missing key = the source reports
   "skipped", run continues. Keys: `CLIST_USERNAME` + `CLIST_API_KEY` (clist.by),
   `BRAVE_API_KEY` (Brave Search API), `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX`
   (Google Programmable Search: API key + engine id with "search entire web").
@@ -125,8 +146,9 @@ never 0.0.0.0. Page sections live in `components/site/`; copy and links in
 `lib/site.ts` - `downloadUrl` is the evergreen DMG link
 (`releases/latest/download/ncomphunt.dmg`); every GitHub release must upload an
 unversioned `ncomphunt.dmg` asset alongside the versioned one so the site never
-needs a rebuild per app release. Distribution is direct (GitHub release DMG +
-Homebrew cask `nhannht/homebrew-tap`), not the Mac App Store.
+needs a rebuild per app release. Distribution is both direct (GitHub release DMG
++ Homebrew cask `nhannht/homebrew-tap`, Developer ID + notarized) and the Mac App
+Store (app id 6791654003, sandboxed build).
 
 Deployed at https://ncomphunt.nhannht.io.vn : `output: "export"` static build
 (`images.unoptimized`, sitemap/robots `force-static`) rsynced from `out/` to
