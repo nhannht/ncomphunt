@@ -99,13 +99,21 @@ map in the same turn.
   (`KeychainCredentialStore`, managed under Settings > API Keys). The flat
   `~/.claude/secrets.yml` (parsed with Yams, UPPER_SNAKE, "your-" placeholder
   values rejected) is the dev/CLI fallback and the source for the one-time
-  `SecretsImporter` migration; the sandboxed App Store build cannot read it, so
-  there it is Keychain-only. Missing key = the source reports
+  `SecretsImporter` migration. Every shipped build is sandboxed
+  (`ENABLE_APP_SANDBOX: YES`, no DMG/MAS split), so the automatic path read of
+  that file never succeeds in the app - it is Keychain-only there. The
+  `SecretsImporter` migration still works everywhere because `SettingsView`
+  routes it through an `NSOpenPanel` plus `startAccessingSecurityScopedResource`,
+  covered by the `files.user-selected.read-only` entitlement. Missing key = the source reports
   "skipped", run continues. Keys: `CLIST_USERNAME` + `CLIST_API_KEY` (clist.by),
   `BRAVE_API_KEY` (Brave Search API), `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX`
   (Google Programmable Search: API key + engine id with "search entire web").
-- YouTrack base URL + bearer token: read from `~/.claude.json`
-  `mcpServers.youtrack.headers.Authorization` (same discovery as job-recon).
+- YouTrack base URL + bearer token: Keychain-first, same as the API keys. The
+  `~/.claude.json` `mcpServers.youtrack.headers.Authorization` discovery (same
+  as job-recon) is a `SecretsReader` fallback that only resolves outside the
+  sandbox, so it applies to `swift test` and CLI use of `CompHuntKit`, never to
+  the shipped app. `SecretsReader.defaultClaudeJSONPath` has no open-panel
+  equivalent, unlike the secrets.yml importer.
 - YouTrack sits behind Cloudflare that blocks non-browser clients (error 1010):
   URLSession uses a browser-like User-Agent; if blocked, shell out to `curl`.
 
