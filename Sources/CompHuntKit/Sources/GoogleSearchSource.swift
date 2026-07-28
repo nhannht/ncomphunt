@@ -36,7 +36,7 @@ public struct GoogleSearchSource: CompetitionSource {
         return dtos
     }
 
-    static func parse(_ data: Data, query: SearchQuery) throws -> [CompetitionDTO] {
+    static func parse(_ data: Data, query: CatalogQuery) throws -> [CompetitionDTO] {
         let response = try JSONDecoder().decode(Response.self, from: data)
         return (response.items ?? []).compactMap { item in
             SearchHitMapper.dto(

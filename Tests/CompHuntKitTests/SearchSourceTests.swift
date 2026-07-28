@@ -3,7 +3,7 @@ import Testing
 @testable import CompHuntKit
 
 @Suite struct BraveParsing {
-    private let query = SearchQuery(text: "hackathon Vietnam 2026", hint: .hackathon)
+    private let query = CatalogQuery(text: "hackathon Vietnam 2026", hint: .hackathon)
 
     @Test func keepsOnlyRealLeads() throws {
         let dtos = try BraveSearchSource.parse(try fixture("brave", "json"), query: query)
@@ -40,7 +40,7 @@ import Testing
 }
 
 @Suite struct GoogleCSEParsing {
-    private let query = SearchQuery(text: "design contest 2026 deadline", hint: .design)
+    private let query = CatalogQuery(text: "design contest 2026 deadline", hint: .design)
 
     @Test func keepsOnlyRealLeadsAndDecodesEntities() throws {
         let dtos = try GoogleSearchSource.parse(try fixture("googlecse", "json"), query: query)
@@ -59,7 +59,7 @@ import Testing
 }
 
 @Suite struct SearchHitGates {
-    private let query = SearchQuery(text: "CTF competition 2026 registration", hint: .ctf)
+    private let query = CatalogQuery(text: "CTF competition 2026 registration", hint: .ctf)
 
     @Test func subdomainOfCoveredHostIsDropped() {
         let hit = SearchHit(

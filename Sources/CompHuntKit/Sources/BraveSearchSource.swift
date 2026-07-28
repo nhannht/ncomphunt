@@ -40,7 +40,7 @@ public struct BraveSearchSource: CompetitionSource {
         return dtos
     }
 
-    static func parse(_ data: Data, query: SearchQuery) throws -> [CompetitionDTO] {
+    static func parse(_ data: Data, query: CatalogQuery) throws -> [CompetitionDTO] {
         let response = try JSONDecoder().decode(Response.self, from: data)
         return (response.web?.results ?? []).compactMap { result in
             SearchHitMapper.dto(

@@ -8,7 +8,7 @@ struct SearchHit {
 }
 
 /// A query in the fixed catalog both search sources run.
-public struct SearchQuery: Sendable {
+public struct CatalogQuery: Sendable {
     public let text: String
     /// Pre-classification: the query already names the category it hunts for.
     public let hint: CompetitionCategory?
@@ -23,15 +23,15 @@ public enum SearchCatalog {
     /// The fixed query set, with the current year injected so the catalog
     /// stays fresh without maintenance. Kept small on purpose: each refresh
     /// that includes search spends one API call per query per engine.
-    public static func queries(now: Date = .now) -> [SearchQuery] {
+    public static func queries(now: Date = .now) -> [CatalogQuery] {
         let year = Calendar(identifier: .gregorian).component(.year, from: now)
         return [
-            SearchQuery(text: "hackathon Vietnam \(year)", hint: .hackathon),
-            SearchQuery(text: "\"cuộc thi\" lập trình \(year)", hint: .cp),
-            SearchQuery(text: "CTF competition \(year) registration", hint: .ctf),
-            SearchQuery(text: "AI competition \(year) deadline", hint: .ai),
-            SearchQuery(text: "\"cuộc thi\" thiết kế \(year)", hint: .design),
-            SearchQuery(text: "design contest \(year) deadline", hint: .design),
+            CatalogQuery(text: "hackathon Vietnam \(year)", hint: .hackathon),
+            CatalogQuery(text: "\"cuộc thi\" lập trình \(year)", hint: .cp),
+            CatalogQuery(text: "CTF competition \(year) registration", hint: .ctf),
+            CatalogQuery(text: "AI competition \(year) deadline", hint: .ai),
+            CatalogQuery(text: "\"cuộc thi\" thiết kế \(year)", hint: .design),
+            CatalogQuery(text: "design contest \(year) deadline", hint: .design),
         ]
     }
 }
@@ -53,7 +53,7 @@ enum SearchHitMapper {
         "challenge", "olympiad", "olympic",
     ]
 
-    static func dto(from hit: SearchHit, source: String, query: SearchQuery) -> CompetitionDTO? {
+    static func dto(from hit: SearchHit, source: String, query: CatalogQuery) -> CompetitionDTO? {
         guard let host = URL(string: hit.url)?.host?.lowercased() else { return nil }
         let bareHost = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
         let excluded = excludedHosts.contains { bareHost == $0 || bareHost.hasSuffix("." + $0) }
