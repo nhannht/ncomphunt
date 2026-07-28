@@ -135,20 +135,27 @@ map in the same turn.
 
 ## Website (`website/`)
 
-Marketing site, Apple liquid-glass style over the brand gradient
-(#D825FC > #1C3D7A > #3574F0). Next.js 16 App Router + Tailwind v4 + shadcn
+Marketing site over the brand gradient (#D825FC > #1C3D7A > #3574F0). Two
+materials, and the split is deliberate: `.paper` (opaque, globals.css) for every
+surface that carries copy, glass for chrome only (the GlassSurface nav, hero
+chips). Text never sits on a translucent surface over the animated background -
+that was the readability bug. Next.js 16 App Router + Tailwind v4 + shadcn
 (nova preset) + React Bits components (FloatingLines, GlassSurface, GooeyNav,
-SpecularButton, SplitText, GradientText, ShinyText, SpotlightCard, LogoLoop,
-CardSwap, Carousel, Dock; Aurora, GlareHover, StarBorder installed but unused -
+SplitText, GradientText, ShinyText, SpotlightCard, LogoLoop, CardSwap, Carousel;
+Aurora, GlareHover, StarBorder, Dock, SpecularButton installed but unused -
 installed via `bunx shadcn add https://reactbits.dev/r/<Name>-TS-TW` into
 `components/`). Site-wide background is FloatingLines (three.js,
 `@types/three` dev dep) mounted fixed inset-0 -z-10 in `site/Background.tsx`
-so it follows the viewport on scroll. Local customizations: FloatingLines
-pointer listeners moved canvas -> window (canvas is pointer-events-none);
-Carousel gained an optional `image` item field + glass palette; GooeyNav
-dropped its black-backdrop gooey blend (leaks inside GlassSurface's
-backdrop-filter stacking context) in favor of plain particles colored by
-`--color-1..4` in globals.css.
+so it follows the viewport on scroll, with a two-pass scrim over the canvas
+(flat + radial) so wave peaks never land under body copy. Local customizations:
+FloatingLines pointer listeners moved canvas -> window (canvas is
+pointer-events-none); Carousel gained an optional `image` item field + glass
+palette; GooeyNav dropped its black-backdrop gooey blend (leaks inside
+GlassSurface's backdrop-filter stacking context) in favor of plain particles
+colored by `--color-1..4` in globals.css, and its particle spawner moved to
+`lib/particles.ts` (CSS in globals.css) so `components/ParticleButton.tsx` -
+the site's one button, a `.mbtn` material pill that fills white on hover and
+fires the same burst on click - shares one motion language with the nav.
 bun only: `cd website && bun run build`; dev server binds loopback/Tailscale,
 never 0.0.0.0. Page sections live in `components/site/`; copy and links in
 `lib/site.ts` - `downloadUrl` is the evergreen DMG link

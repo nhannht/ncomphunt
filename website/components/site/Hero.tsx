@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import SpecularButton from "@/components/SpecularButton";
+import ParticleButton from "@/components/ParticleButton";
 import SplitText from "@/components/SplitText";
 import ShinyText from "@/components/ShinyText";
 import { brand, site } from "@/lib/site";
@@ -40,7 +40,7 @@ export default function Hero() {
           className="mt-8 max-w-4xl text-5xl font-semibold tracking-tight text-white [text-wrap:balance] sm:text-6xl md:text-7xl"
         />
 
-        <p className="mt-6 max-w-2xl text-lg text-white/70 md:text-xl">
+        <p className="mt-6 max-w-2xl text-lg text-white/85 md:text-xl">
           Competitive programming rounds, AI challenges, CTFs, hackathons, and
           design contests - found, sorted, and waiting in your menu bar.
           Vietnam-first, global always.
@@ -60,30 +60,26 @@ export default function Hero() {
             </span>
           </a>
 
-          <SpecularButton
-            size="lg"
-            radius={16}
-            tint="#ffffff"
-            tintOpacity={0.06}
-            blur={14}
-            lineColor="#ffffff"
-            baseColor="#7a86b8"
-            intensity={1.1}
-            autoAnimate
-            onClick={() => window.open(site.github, "_blank", "noreferrer")}
+          {/* Height-matched to the Download button beside it (two-line label).
+              Fills brand blue rather than the default white, which would read as
+              a second copy of the white primary sitting right next to it. */}
+          <ParticleButton
+            href={site.github}
+            external
+            fill="#2f68e0"
+            ink="#ffffff"
+            className="!h-[66px] !px-6"
           >
-            <span className="flex items-center gap-3">
-              <GitHubIcon className="size-6" />
-              <span className="text-[15px] font-medium">View on GitHub</span>
-            </span>
-          </SpecularButton>
+            <GitHubIcon className="size-6" />
+            View on GitHub
+          </ParticleButton>
         </div>
 
-        <code className="glass mt-5 rounded-full px-4 py-1.5 text-sm text-white/70">
+        <code className="glass mt-5 rounded-full px-4 py-1.5 text-sm text-white/90">
           {site.brew}
         </code>
 
-        <p className="mt-4 text-sm text-white/40">
+        <p className="mt-4 text-sm text-white/70">
           {site.requirement} - signed with Developer ID, notarized by Apple
         </p>
 
@@ -91,7 +87,7 @@ export default function Hero() {
           {categories.map(category => (
             <span
               key={category.label}
-              className="glass flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm text-white/80"
+              className="glass flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm text-white/90"
             >
               <span
                 className="size-2 rounded-full"
