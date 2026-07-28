@@ -95,6 +95,12 @@ private func titles(_ text: String) -> [String] { found(text).items.map(\.title)
         #expect(titles("\"open cup\"").isEmpty)
     }
 
+    @Test func anEmptyListIsNotReportedAsAFallback() {
+        // "showing all" beside nothing at all is a contradiction, and that case
+        // has its own screen with the diagnosis on it.
+        #expect(!found("category:design region:global zzzzzz").isFallback)
+    }
+
     @Test func aPhraseMatchingOnlyAnEndedRowStillShowsIt() {
         // A phrase is a literal match and needs no score to prove it. Requiring
         // one would blank the list here and then blame the phrase that was right.

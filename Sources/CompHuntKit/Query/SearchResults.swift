@@ -67,7 +67,11 @@ public extension SearchQuery {
             }
             .map(\.item)
 
-        // Browsing is not a failed search, so it is never reported as one.
-        return SearchResults(items: sorted, isFallback: fellBack && hasFreeText)
+        // Browsing is not a failed search, so it is never reported as one. Nor
+        // is a fallback that produced nothing either - "showing all" beside an
+        // empty list is a contradiction, and that case has its own screen.
+        return SearchResults(
+            items: sorted,
+            isFallback: fellBack && hasFreeText && !sorted.isEmpty)
     }
 }
