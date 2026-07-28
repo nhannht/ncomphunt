@@ -35,7 +35,7 @@ Want broader coverage? Add your own free API keys in Settings to switch on clist
 
 Right-click any contest to open its page, copy the link, share it, add it to your calendar, or file it into YouTrack if you use it.
 
-nCompHunt is free and open source under the MIT license. It requires macOS 15 or later, keeps no account, and stays quietly obsessive about deadlines so you do not have to be.
+nCompHunt is free and open source under the MIT license. It requires macOS 26 or later, keeps no account, and stays quietly obsessive about deadlines so you do not have to be.
 
 ## Keywords (99 / 100)
 

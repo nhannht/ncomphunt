@@ -13,7 +13,7 @@ export const site = {
     "https://github.com/nhannht/ncomphunt/releases/latest/download/ncomphunt.dmg",
   releases: "https://github.com/nhannht/ncomphunt/releases",
   brew: "brew install --cask nhannht/tap/ncomphunt",
-  requirement: "Requires macOS 15 or later",
+  requirement: "Requires macOS 26 or later",
   author: "Nguyen Huu Thien Nhan",
 } as const;
 

@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/nhannht/ncomphunt/releases"><img src="https://img.shields.io/github/v/release/nhannht/ncomphunt?label=release&color=3574F0" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/macOS-15%2B-000000?logo=apple&logoColor=white" alt="macOS 15 or later">
+  <img src="https://img.shields.io/badge/macOS-26%2B-000000?logo=apple&logoColor=white" alt="macOS 26 or later">
   <img src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white" alt="Swift 6">
   <img src="https://img.shields.io/badge/Developer%20ID-notarized-1C3D7A" alt="Developer ID notarized">
   <img src="https://img.shields.io/badge/license-MIT-555555" alt="MIT license">
@@ -125,7 +125,7 @@ reads a snapshot the app writes into a shared App Group container.
 
 ## Requirements
 
-- macOS 15+; building from source needs Xcode 26+ and XcodeGen
+- macOS 26+; building from source needs Xcode 26+ and XcodeGen
 
 ## License
 

@@ -15,7 +15,7 @@ const jsonLd = {
   "@type": "SoftwareApplication",
   name: site.name,
   description: site.description,
-  operatingSystem: "macOS 15.0 or later",
+  operatingSystem: "macOS 26.0 or later",
   applicationCategory: "ProductivityApplication",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   license: "https://opensource.org/license/mit",

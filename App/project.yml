@@ -2,19 +2,21 @@ name: CompHunt
 options:
   bundleIdPrefix: com.nhannht
   deploymentTarget:
-    macOS: "15.0"
+    macOS: "26.0"
   createIntermediateGroups: true
 
 packages:
   CompHuntKit:
     path: ..
 
-targets:
-  CompHunt:
+# Everything the app target is, except which sources it compiles. Extracted so a
+# second entry point can be built from the same definition instead of a
+# hand-copied duplicate that drifts. This repository declares exactly one target
+# from it; the template is the seam, not a hint that more exist here.
+targetTemplates:
+  AppBase:
     type: application
     platform: macOS
-    sources:
-      - Sources
     dependencies:
       - package: CompHuntKit
       - target: CompHuntWidget
@@ -49,6 +51,12 @@ targets:
           CODE_SIGN_IDENTITY: "Developer ID Application"
           DEVELOPMENT_TEAM: V3P5U9Z68M
           ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  CompHunt:
+    templates: [AppBase]
+    sources:
+      - Sources
 
   CompHuntWidget:
     type: app-extension
