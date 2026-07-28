@@ -8,6 +8,11 @@
 #                                 to App Store Connect (or export a .pkg for
 #                                 Transporter when no ASC API key is set)
 #
+# build and notarize ship the FREE app: this repo alone, nothing else needed.
+# appstore ships the PAID app and additionally needs the private comphunt-pro
+# checkout beside this one (override with COMPHUNT_PRO_SPEC). It fails rather
+# than falling back, so a free build can never be uploaded as the paid one.
+#
 # Prereqs:
 #   - "Developer ID Application" certificate in the login keychain
 #   - notarytool credentials stored once via:
@@ -204,14 +209,33 @@ appstore() {
     echo "      (automatic signing then relies on the Apple ID session in Xcode)"
   fi
 
+  # The App Store build is the paid build, and the paid module lives in a
+  # separate private repository. Its spec includes this one and adds a target
+  # whose only difference is the entry point, so everything below is otherwise
+  # unchanged.
+  #
+  # Absence is FATAL, never a silent downgrade: quietly falling back to the free
+  # target here would upload a build with no paid features under a version
+  # number that promises them, and the failure would only surface in review or,
+  # worse, to a paying customer.
+  local pro_spec="${COMPHUNT_PRO_SPEC:-$ROOT/../comphunt-pro/App/project-pro.yml}"
+  if [ ! -f "$pro_spec" ]; then
+    echo "FATAL: Pro spec not found at $pro_spec" >&2
+    echo "       The App Store lane builds the paid target and cannot run without it." >&2
+    echo "       Clone comphunt-pro beside this repo, or set COMPHUNT_PRO_SPEC." >&2
+    exit 1
+  fi
+
   rm -rf "$mas_dir"
   mkdir -p "$mas_dir"
 
-  (cd "$ROOT/App" && xcodegen generate)
+  # Generated INTO App/ so every path the included spec declares still resolves
+  # against this repo, which is why -p and -r are both pinned there.
+  (cd "$ROOT/App" && xcodegen generate -s "$pro_spec" -p . -r .)
   # Archive signs with Apple Development (entitlements embed at SIGNING time -
   # an empty identity produces unsigned binaries and ASC rejects with 90296
   # "App sandbox not enabled"); the export re-signs for App Store distribution.
-  xcodebuild -project "$ROOT/App/CompHunt.xcodeproj" -scheme CompHunt \
+  xcodebuild -project "$ROOT/App/CompHuntPro.xcodeproj" -scheme CompHuntProApp \
     -configuration Release -archivePath "$mas_archive" archive \
     CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY="Apple Development" \
     DEVELOPMENT_TEAM=V3P5U9Z68M \
