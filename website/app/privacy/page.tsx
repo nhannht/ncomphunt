@@ -9,7 +9,7 @@ import Footer from "@/components/site/Footer";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "nCompHunt collects nothing about you: no accounts, no analytics, no telemetry, no server. Read the full privacy policy.",
+    "What nCompHunt does and does not do with your data. Read the current privacy policy.",
   alternates: { canonical: "/privacy" },
 };
 

@@ -26,9 +26,9 @@ dedicated Apple Calendar that keeps every deadline up to date.
 
 ![](./showcase/appstore/as2-menubar.png)
 
-Built in Swift 6 / SwiftUI with SwiftData persistence. No account, no telemetry,
-no server: the app talks directly to the public sources below and everything
-stays on your Mac.
+Built in Swift 6 / SwiftUI with SwiftData persistence. There is no account to
+create and no setup: the app talks directly to the public sources below and
+keeps its index in local storage on your Mac.
 
 
 ## Install

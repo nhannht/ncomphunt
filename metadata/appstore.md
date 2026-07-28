@@ -3,25 +3,32 @@
 Paste-ready fields for App Store Connect. Character counts are stated next to
 each length-limited field and were verified by counting.
 
+Every privacy statement in this file describes THE SUBMITTED BUILD, not the
+product forever. Marketing copy states what the app does today and makes no
+promise about later versions. The App Privacy questionnaire and the App Review
+notes are re-answered per release: any release that adds a server, analytics,
+accounts, or telemetry changes both, and shipping a stale "Data Not Collected"
+answer is a review problem, not a copy problem.
+
 ## App name (9 / 30)
 
 nCompHunt
 
 ## Subtitle (28 / 30)
 
-Track every contest information
+Track every contest deadline
 
-## Promotional text (164 / 170)
+## Promotional text (163 / 170)
 
-Competitive programming, AI challenges, CTFs, hackathons, and design contests - found, sorted, and waiting in your menu bar. No account, no server, all on your Mac.
+Competitive programming, AI challenges, CTFs, hackathons, and design contests - found, sorted, and waiting in your menu bar. No account, no setup, all on your Mac.
 
-## Description (2093 / 4000)
+## Description (2118 / 4000)
 
 nCompHunt is a native macOS app that finds competitions and keeps them in front of you: competitive programming rounds, AI and machine-learning challenges, CTF security games, hackathons, and design contests, Vietnam-first and global.
 
 It is built to live on your Mac. A SwiftUI main window gives you category and region filters plus sort and group controls. A menu bar extra keeps the next deadlines one click away. A desktop widget shows what is coming up without opening the app, and native notifications tell you the moment a new contest is found. Turn on calendar sync and a dedicated Apple Calendar keeps every deadline updated in place as contest details change, or add a single contest with one action as an .ics import. Share any listing through the standard macOS share sheet.
 
-Your data stays yours. There is no account to create, no telemetry, no analytics, and no back-end server between you and the sources. The app fetches listings directly, and the index it builds never leaves your Mac.
+Your data stays yours. There is no account to create and nothing to sign in to. The app fetches listings straight from the sources and keeps its index in local storage on your Mac.
 
 Sources that work the moment you open the app, no setup required:
 - CTFtime - the worldwide CTF calendar
@@ -61,9 +68,10 @@ https://ncomphunt.nhannht.io.vn/privacy
 
 ## App Privacy (nutrition label questionnaire)
 
-Data Not Collected - the app collects no data of any kind (consistent with the
-App Review notes below: no accounts, no analytics, no telemetry, no
-developer-run server).
+Data Not Collected - version 1.0.0 collects no data of any kind (consistent with
+the App Review notes below: no accounts, no analytics, no telemetry, no
+developer-run server). Re-answer this questionnaire for every release; it
+describes the build being submitted, not the app in general.
 
 ## Copyright
 
@@ -82,4 +90,4 @@ The API keys under Settings > API Keys (clist.by, Brave Search, Google Programma
 
 The app links out to third-party competition pages, which open in the default browser. Calendar access is optional and user-initiated: it is requested only when the user turns on calendar sync in Settings or chooses Add to Calendar on a specific contest. Notifications are optional and requested only for new-contest alerts.
 
-The app collects no data, uses no analytics, and operates no developer-run back-end server. All network requests go directly to the public competition sources listed above.
+This version collects no data, uses no analytics, and involves no developer-run back-end server. All network requests go directly to the public competition sources listed above.

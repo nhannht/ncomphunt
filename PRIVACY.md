@@ -1,17 +1,22 @@
 # Privacy Policy
 
-Effective date: 2026-07-16
+Effective date: 2026-07-16\
+Applies to: nCompHunt 1.0.x
 
 nCompHunt is a native macOS app that finds and indexes competitions. This policy
-explains what the app does and does not do with your data. The short version: it
-collects nothing about you.
+explains what the app does and does not do with your data, as the app ships
+today. It is not a promise about future versions: if a later release changes
+what the app does, this policy is updated first and gets a new effective date.
+See "Changes to this policy" at the end.
 
-## No data collection
+## What the current version collects
 
 - nCompHunt does not collect, store, or transmit any personal data.
-- There is no analytics, no telemetry, no crash reporting, and no usage tracking.
-- There are no accounts and no sign-in.
-- The developer operates no server. The app has no back end to send your data to.
+- It includes no analytics, no telemetry, no crash reporting, and no usage
+  tracking.
+- It has no accounts and no sign-in.
+- It sends nothing to a developer-run server, because this version has no back
+  end. Network requests go only to the public sources listed below.
 
 ## Network requests
 
@@ -65,8 +70,12 @@ nCompHunt does not collect any data from anyone, including children.
 
 ## Changes to this policy
 
-If this policy changes, the updated version will be published at this same
-location with a new effective date.
+This policy describes the version of nCompHunt named at the top. If a future
+release changes what the app does with data - for example by adding a back-end
+service, an account, or analytics - this policy is updated and republished at
+this same location, with a new effective date and a new version range, before
+that release ships. Nothing here should be read as a commitment that the app
+will never gain those features.
 
 ## Contact
 

@@ -2,7 +2,7 @@ export const site = {
   name: "nCompHunt",
   tagline: "Every competition, one native Mac app",
   description:
-    "Competitive programming, AI challenges, CTFs, hackathons, and design contests - found, sorted, and waiting in your menu bar. No account, no server, all on your Mac.",
+    "Competitive programming, AI challenges, CTFs, hackathons, and design contests - found, sorted, and waiting in your menu bar. A native macOS app that runs on your Mac, with no account and no setup.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://ncomphunt.nhannht.io.vn",
   github: "https://github.com/nhannht/ncomphunt",
   issues: "https://github.com/nhannht/ncomphunt/issues",
