@@ -25,7 +25,7 @@ private var openAI: Competition {
     comp("OpenAI Build Week", category: .ai, source: "mlcontests")
 }
 private var spectral: Competition {
-    comp("Spectral::Cup 2026 Round 3", category: .cp, source: "codeforces")
+    comp("Spectral::Cup 2026 Round 3 (Codeforces Round 1110, Div. 1 + Div. 2)", category: .cp, source: "codeforces")
 }
 
 @Suite struct Parsing {

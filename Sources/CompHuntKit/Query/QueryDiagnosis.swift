@@ -72,22 +72,14 @@ public extension SearchQuery {
         }
     }
 
-    /// Competitions this query currently shows, under the same visibility rule
-    /// the list uses - otherwise a suggestion could promise rows the list would
-    /// then decline to show.
-    func matchCount(in competitions: [Competition], now: Date = .now) -> Int {
-        competitions.count { admits($0, now: now) && isVisible($0, now: now) }
-    }
-
-    /// Whether a competition may appear at all.
+    /// Competitions this query currently shows.
     ///
-    /// Finished competitions are shown only when the person typed something to
-    /// search FOR and this row answers it. Browsing a category is not searching,
-    /// so it stays free of rows that already ended, and a search never hides the
-    /// one real answer just because it closed last week.
-    func isVisible(_ competition: Competition, now: Date = .now) -> Bool {
-        if competition.isCurrent(asOf: now) { return true }
-        return hasFreeText && relevance(of: competition) > 0
+    /// Routed through `results` rather than re-deriving the rule, because a
+    /// diagnosis that counts rows one way while the list renders them another
+    /// is exactly how a suggestion ends up promising results that never appear.
+    /// The tie-break is irrelevant to a count.
+    func matchCount(in competitions: [Competition], now: Date = .now) -> Int {
+        results(from: competitions, now: now, tieBreak: { _, _ in true }).items.count
     }
 
     /// The one constraint whose removal would reveal the most competitions, or

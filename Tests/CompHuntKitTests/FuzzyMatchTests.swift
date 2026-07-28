@@ -7,7 +7,7 @@ import Testing
 /// app still returned nothing.
 private let openAtlas = "Open Atlas - AI for Social Good Hackathon 2026"
 private let openAI = "OpenAI Build Week"
-private let spectral = "Spectral::Cup 2026 Round 3"
+private let spectral = "Spectral::Cup 2026 Round 3 (Codeforces Round 1110, Div. 1 + Div. 2)"
 private let vietnamese = "Cuộc thi Thiết Kế Poster 2026"
 
 @Suite struct TheLadder {
@@ -56,6 +56,20 @@ private let vietnamese = "Cuộc thi Thiết Kế Poster 2026"
         // the single most common typing mistake, and plain edit distance
         // charges double for it.
         #expect(FuzzyMatch.score(term: "opne", in: openAtlas) == FuzzyMatch.nearMiss)
+    }
+
+    @Test func aTypoInsideAPrefixStillReaches() {
+        // "opne" cannot be one edit from "openai" - the lengths rule it out -
+        // but it is clearly one edit from how that word STARTS. Without this
+        // rung a single typo switches prefix matching off entirely, so "open"
+        // finds OpenAI and "opne" finds nothing.
+        #expect(FuzzyMatch.score(term: "opne", in: openAI) == FuzzyMatch.prefixMiss)
+    }
+
+    @Test func aPrefixTypoRanksBelowACleanWordMatch() {
+        // The reported ordering has to survive the typo, not just the spelling.
+        #expect(FuzzyMatch.score(term: "opne", in: openAtlas)
+                > FuzzyMatch.score(term: "opne", in: openAI))
     }
 
     @Test func twoEditsOnlyForLongerTerms() {

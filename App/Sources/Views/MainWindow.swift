@@ -272,33 +272,12 @@ struct CompetitionListPane: View {
     @Environment(AppModel.self) private var model
     @Query private var competitions: [Competition]
 
-    /// Surviving rows: best text match first when text was typed, finished
-    /// competitions always last.
-    ///
-    /// Ended rows are pushed down by a separate sort key rather than a score
-    /// penalty, so no amount of text relevance can lift a contest that already
-    /// closed above one a person can still enter.
-    ///
-    /// Relevance takes precedence over the chosen sort ONLY while free text is
-    /// active, because someone who typed something is asking "which of these is
-    /// what I meant" rather than "which is soonest". The chosen sort still
-    /// breaks ties, and the subtitle says when this is happening so the
-    /// reordering is never silent.
-    private var visible: [Competition] {
-        let now = Date.now
-        let scored = competitions.compactMap {
-            competition -> (item: Competition, score: Int, ended: Bool)? in
-            guard query.admits(competition, now: now),
-                  query.isVisible(competition, now: now) else { return nil }
-            return (competition, query.relevance(of: competition),
-                    !competition.isCurrent(asOf: now))
-        }
-        return scored.sorted { a, b in
-            if a.ended != b.ended { return b.ended }
-            if isRanked, a.score != b.score { return a.score > b.score }
-            return sort.areInOrder(a.item, b.item)
-        }
-        .map(\.item)
+    /// Matching rows: best text match first, finished competitions always last.
+    /// The rule and the ordering live in the kit so both can be tested without
+    /// a window; the subtitle reports when relevance is in charge and when
+    /// nothing matched, so neither is ever silent.
+    private var found: SearchResults {
+        query.results(from: competitions, tieBreak: sort.areInOrder)
     }
 
     private var isRanked: Bool { !query.terms.isEmpty }
@@ -317,7 +296,8 @@ struct CompetitionListPane: View {
     }
 
     var body: some View {
-        let rows = visible
+        let results = found
+        let rows = results.items
         let now = Date.now
         let live = rows.filter { $0.isCurrent(asOf: now) }
         let ended = rows.filter { !$0.isCurrent(asOf: now) }
@@ -365,7 +345,8 @@ struct CompetitionListPane: View {
             }
         }
         .navigationTitle(title)
-        .navigationSubtitle(subtitle(live: live.count, ended: ended.count))
+        .navigationSubtitle(
+            subtitle(live: live.count, ended: ended.count, fellBack: results.isFallback))
     }
 
     private func row(_ competition: Competition) -> some View {
@@ -376,10 +357,16 @@ struct CompetitionListPane: View {
             }
     }
 
-    private func subtitle(live: Int, ended: Int) -> String {
+    private func subtitle(live: Int, ended: Int, fellBack: Bool) -> String {
         var parts = ["\(live) shown"]
         if ended > 0 { parts.append("\(ended) ended") }
-        if isRanked { parts.append("best match first") }
+        // Never let the fallback pass silently. Getting the whole list back
+        // with no explanation is a worse confusion than a blank screen.
+        if fellBack {
+            parts.append("nothing matched, showing all")
+        } else if isRanked {
+            parts.append("best match first")
+        }
         if let last = model.lastRefresh {
             parts.append("updated \(last.formatted(.relative(presentation: .named)))")
         }

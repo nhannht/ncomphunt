@@ -21,6 +21,10 @@ public enum FuzzyMatch {
     public static let nearMiss = 5
     /// Two edits away, only allowed for longer terms.
     public static let distantMiss = 4
+    /// A typo inside what would otherwise have been a prefix. `opne` against
+    /// `OpenAI`, where the whole word is far too long to be one edit away but
+    /// its opening clearly is.
+    public static let prefixMiss = 3
     /// The term sits contiguously inside the word but not at its start.
     public static let infix = 4
     /// The term's letters appear in order with gaps. `hckthn`.
@@ -97,8 +101,20 @@ public enum FuzzyMatch {
         if word.contains(term) { best = infix }
 
         let limit = editLimit(for: term)
-        if limit > 0, let distance = boundedDistance(term, word, limit: limit) {
-            best = max(best, distance == 1 ? nearMiss : distantMiss)
+        if limit > 0 {
+            if let distance = boundedDistance(term, word, limit: limit) {
+                best = max(best, distance == 1 ? nearMiss : distantMiss)
+            } else if word.count > term.count {
+                // The whole word is too long to be a near miss, but its opening
+                // may still be what was meant. Without this a single typo turns
+                // off prefix matching entirely, so `open` finds OpenAI and
+                // `opne` finds nothing - which is precisely the brittleness
+                // fuzzy matching exists to remove.
+                let opening = String(word.prefix(term.count))
+                if boundedDistance(term, opening, limit: limit) != nil {
+                    best = max(best, prefixMiss)
+                }
+            }
         }
 
         if best == 0, isSubsequence(term, of: word) { best = subsequence }

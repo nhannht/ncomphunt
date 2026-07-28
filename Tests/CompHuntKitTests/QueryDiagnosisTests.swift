@@ -57,7 +57,7 @@ private func comp(
 
         let diagnosis = query.narrowestConstraint(in: index, now: now)
         #expect(diagnosis?.axis == .category(.design))
-        #expect(diagnosis?.countWithout == index.count)
+        #expect(diagnosis?.countWithout == 2)   // the two rows carrying the words
     }
 
     @Test func picksTheAxisThatRevealsTheMost() {
@@ -113,36 +113,40 @@ private func comp(
 /// when the row answers what they typed.
 @Suite struct EndedVisibility {
     private var spectral: Competition {
-        comp("Spectral::Cup 2026 Round 3", category: .cp, source: "codeforces",
+        comp("Spectral::Cup 2026 Round 3 (Codeforces Round 1110, Div. 1 + Div. 2)", category: .cp, source: "codeforces",
              end: now.addingTimeInterval(-12 * day))
     }
     private var live: Competition { comp("CTF Event", category: .ctf) }
+    private var index: [Competition] { [spectral, live] }
+
+    private func shown(_ text: String) -> [String] {
+        SearchQuery.parse(text)
+            .results(from: index, now: now, tieBreak: { $0.title < $1.title })
+            .items.map(\.title)
+    }
 
     @Test func browsingHidesFinishedCompetitions() {
-        // A sidebar click produces exactly this query.
-        let query = SearchQuery.parse("category:cp")
-        #expect(!query.isVisible(spectral, now: now))
-        #expect(query.hasFreeText == false)
+        // A sidebar click produces exactly this query, and browsing is not
+        // searching, so it stays free of rows that already closed.
+        #expect(shown("category:cp").isEmpty)
     }
 
     @Test func searchingRevealsAFinishedMatch() {
         // The real cause of the reported blank screen: the only row carrying
         // the word had ended, so it was hidden and the person was told nothing
         // matched.
-        let query = SearchQuery.parse("cup")
-        #expect(query.isVisible(spectral, now: now))
+        #expect(shown("cup") == [spectral.title])
     }
 
     @Test func searchingDoesNotDragInEveryFinishedRow() {
-        // Only finished rows that ANSWER the query appear, or a search would
-        // trail every dead competition in the store behind it.
-        let query = SearchQuery.parse("hackathon")
-        #expect(!query.isVisible(spectral, now: now))
+        // The ended row does not answer this, so it stays out even though the
+        // search itself found nothing and fell back.
+        #expect(shown("hackathon") == [live.title])
     }
 
-    @Test func liveRowsAreAlwaysVisible() {
-        #expect(SearchQuery.parse("zzzzzz").isVisible(live, now: now))
-        #expect(SearchQuery().isVisible(live, now: now))
+    @Test func liveRowsSurviveAWordThatMatchesNothing() {
+        #expect(shown("zzzzzz") == [live.title])
+        #expect(shown("") == [live.title])
     }
 }
 
