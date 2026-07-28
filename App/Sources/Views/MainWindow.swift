@@ -346,7 +346,7 @@ struct CompetitionListPane: View {
         }
         .navigationTitle(title)
         .navigationSubtitle(
-            subtitle(live: live.count, ended: ended.count, fellBack: results.isFallback))
+            subtitle(shown: rows.count, ended: ended.count, fellBack: results.isFallback))
     }
 
     private func row(_ competition: Competition) -> some View {
@@ -357,8 +357,11 @@ struct CompetitionListPane: View {
             }
     }
 
-    private func subtitle(live: Int, ended: Int, fellBack: Bool) -> String {
-        var parts = ["\(live) shown"]
+    private func subtitle(shown: Int, ended: Int, fellBack: Bool) -> String {
+        // The count is the whole list, and the ended part is a subset of it.
+        // Counting only live rows read as though "1 shown - 1 ended" might be
+        // one row or two.
+        var parts = ["\(shown) shown"]
         if ended > 0 { parts.append("\(ended) ended") }
         // Never let the fallback pass silently. Getting the whole list back
         // with no explanation is a worse confusion than a blank screen.
