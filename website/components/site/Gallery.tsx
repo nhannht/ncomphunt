@@ -50,13 +50,13 @@ export default function Gallery() {
   return (
     <section id="screenshots" className="scroll-mt-24 py-24">
       <div className="mx-auto max-w-6xl px-6">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/40">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/70">
           Screenshots
         </p>
         <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white [text-wrap:balance] md:text-5xl">
           Have a look around.
         </h2>
-        <p className="mt-4 max-w-xl text-white/50">
+        <p className="mt-4 max-w-xl text-white/85">
           Drag, or let it drift. It loops.
         </p>
       </div>

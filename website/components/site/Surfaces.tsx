@@ -21,13 +21,13 @@ export default function Surfaces() {
     <section className="mx-auto max-w-6xl overflow-hidden px-6 py-24 md:overflow-visible">
       <div className="grid items-center gap-12 md:grid-cols-2">
         <div>
-          <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/40">
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/70">
             Everywhere you look
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white [text-wrap:balance] md:text-5xl">
             One app, every surface of macOS.
           </h2>
-          <p className="mt-5 max-w-md leading-relaxed text-white/60">
+          <p className="mt-5 max-w-md leading-relaxed text-white/85">
             The main window is for triage. The menu bar is for glancing. The
             right-click menu is for acting - open the page, add to calendar,
             share, or file it into YouTrack. Settings is where you tune the

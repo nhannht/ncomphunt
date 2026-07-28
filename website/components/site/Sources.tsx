@@ -9,12 +9,12 @@ function pill(name: string, note: string, dimmed = false): LogoItem {
   return {
     node: (
       <div
-        className={`glass flex items-baseline gap-2.5 rounded-full px-5 py-2.5 ${
-          dimmed ? "opacity-70" : ""
+        className={`paper flex items-baseline gap-2.5 rounded-full px-5 py-2.5 ${
+          dimmed ? "opacity-80" : ""
         }`}
       >
         <span className="text-[15px] font-medium text-white">{name}</span>
-        <span className="text-xs text-white/50">{note}</span>
+        <span className="text-xs text-white/70">{note}</span>
       </div>
     ),
     title: name,
@@ -41,13 +41,13 @@ export default function Sources() {
   return (
     <section id="sources" className="relative scroll-mt-24 py-24">
       <div className="mx-auto max-w-6xl px-6">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/40">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/70">
           Sources
         </p>
         <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white [text-wrap:balance] md:text-5xl">
           Working the moment you open it. No setup, no account.
         </h2>
-        <p className="mt-5 max-w-2xl text-white/60">
+        <p className="mt-5 max-w-2xl text-white/85">
           Six sources populate the app out of the box. Every source has an
           on/off switch, and one that fails or is unconfigured is simply
           skipped - it never stops the rest of a refresh.
@@ -79,7 +79,7 @@ export default function Sources() {
         />
       </div>
 
-      <p className="mx-auto mt-10 max-w-2xl px-6 text-center text-sm text-white/40">
+      <p className="mx-auto mt-10 max-w-2xl px-6 text-center text-sm text-white/70">
         The dimmed lane unlocks with your own free API keys, stored in the
         macOS Keychain and sent only to the service they belong to.
       </p>

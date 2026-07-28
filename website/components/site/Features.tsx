@@ -38,15 +38,15 @@ const features = [
   },
   {
     icon: ShieldCheck,
-    title: "Private by design",
-    body: "No account, no telemetry, no analytics, no back-end server. The index nCompHunt builds never leaves your Mac.",
+    title: "Yours to keep",
+    body: "There is no account to create and nothing to sign in to. The app reads the sources directly and keeps its index in local storage on your Mac.",
   },
 ];
 
 export default function Features() {
   return (
     <section id="features" className="relative mx-auto max-w-6xl scroll-mt-24 px-6 py-24">
-      <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/40">
+      <p className="text-sm font-medium uppercase tracking-[0.2em] text-white/70">
         Built for macOS
       </p>
       <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight text-white [text-wrap:balance] md:text-5xl">
@@ -57,7 +57,7 @@ export default function Features() {
         {features.map(feature => (
           <SpotlightCard
             key={feature.title}
-            className="!border-white/10 !bg-white/[0.04] backdrop-blur-xl"
+            className="paper"
             spotlightColor="rgba(216, 37, 252, 0.16)"
           >
             <div className="flex size-11 items-center justify-center rounded-xl bg-gradient-to-br from-[#D825FC] to-[#3574F0]">
@@ -66,7 +66,7 @@ export default function Features() {
             <h3 className="mt-5 text-lg font-semibold text-white">
               {feature.title}
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-white/60">
+            <p className="mt-2 text-sm leading-relaxed text-white/85">
               {feature.body}
             </p>
           </SpotlightCard>

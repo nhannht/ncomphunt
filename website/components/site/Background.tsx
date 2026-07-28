@@ -19,6 +19,12 @@ export default function Background() {
         parallax
         parallaxStrength={0.25}
       />
+      {/* Scrim. The waves are ambient light, not a competitor to the copy on
+          top of them: at full brightness a white streak lands under a
+          paragraph and drops it to ~3:1. The flat pass cuts peak luminance,
+          the radial pass darkens the edges where headings start. */}
+      <div className="absolute inset-0 bg-[#0b0e1c]/60" />
+      <div className="absolute inset-0 bg-[radial-gradient(115%_75%_at_50%_35%,transparent_0%,rgba(11,14,28,0.55)_100%)]" />
     </div>
   );
 }
