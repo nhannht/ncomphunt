@@ -33,13 +33,6 @@ enum CompetitionFilter: Hashable, Identifiable, CaseIterable {
         case .category(.other): "questionmark.circle"
         }
     }
-
-    func matches(_ competition: Competition) -> Bool {
-        switch self {
-        case .all: true
-        case .category(let category): competition.category == category
-        }
-    }
 }
 
 /// Region filter, orthogonal to the category sidebar. Persisted via @AppStorage
@@ -62,14 +55,6 @@ enum RegionFilter: String, CaseIterable, Identifiable {
     /// True when a region other than "all" is active, so the toolbar icon can
     /// signal that the list is filtered.
     var isActive: Bool { self != .all }
-
-    func matches(_ competition: Competition) -> Bool {
-        switch self {
-        case .all: true
-        case .vietnam: competition.region == .vietnam
-        case .global: competition.region == .global
-        }
-    }
 }
 
 /// List sort order, persisted via @AppStorage as its raw value.
