@@ -1,4 +1,3 @@
-import DockBar from "@/components/site/DockBar";
 import Features from "@/components/site/Features";
 import Footer from "@/components/site/Footer";
 import Gallery from "@/components/site/Gallery";
@@ -39,7 +38,6 @@ export default function Home() {
         <OpenSource />
       </main>
       <Footer />
-      <DockBar />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
