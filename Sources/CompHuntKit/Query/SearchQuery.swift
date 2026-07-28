@@ -22,6 +22,13 @@ public struct SearchQuery: Equatable, Sendable {
     public var categories: Set<CompetitionCategory>
     public var regions: Set<Region>
     public var sources: Set<SourceID>
+    /// How soon the next date has to fall, in days.
+    ///
+    /// Stored as a RELATIVE window rather than the absolute pair it replaces.
+    /// Absolute dates cannot survive a round trip through the search field, and
+    /// a persisted one goes quietly stale overnight - "closing this week" would
+    /// still mean the week it was typed in.
+    public var withinDays: Int?
     /// Quoted runs. Quotes are how a person turns the fuzziness OFF, which is
     /// why this is the one text form allowed to filter.
     public var phrases: [String]
@@ -35,19 +42,21 @@ public struct SearchQuery: Equatable, Sendable {
         categories: Set<CompetitionCategory> = [],
         regions: Set<Region> = [],
         sources: Set<SourceID> = [],
+        withinDays: Int? = nil,
         phrases: [String] = [],
         terms: [String] = []
     ) {
         self.categories = categories
         self.regions = regions
         self.sources = sources
+        self.withinDays = withinDays
         self.phrases = phrases
         self.terms = terms
     }
 
     public var isEmpty: Bool {
         categories.isEmpty && regions.isEmpty && sources.isEmpty
-            && phrases.isEmpty && terms.isEmpty
+            && withinDays == nil && phrases.isEmpty && terms.isEmpty
     }
 
     /// Whether the person typed anything to search FOR, as opposed to a lens to
@@ -64,12 +73,18 @@ public struct SearchQuery: Equatable, Sendable {
     /// Whether this competition survives the constraints. Bare terms are
     /// deliberately not consulted: that omission is the invariant making an
     /// empty list unreachable by typing.
-    public func admits(_ competition: Competition) -> Bool {
+    public func admits(_ competition: Competition, now: Date = .now) -> Bool {
         if !categories.isEmpty, !categories.contains(competition.category) { return false }
         if !regions.isEmpty, !regions.contains(competition.region) { return false }
         if !sources.isEmpty {
             guard let id = SourceID(rawValue: competition.source),
                   sources.contains(id) else { return false }
+        }
+        if let withinDays {
+            // A row with no date cannot honestly satisfy "closing this week".
+            guard let date = competition.nextRelevantDate else { return false }
+            let limit = now.addingTimeInterval(Double(withinDays) * 86_400)
+            if date < now || date > limit { return false }
         }
         for phrase in phrases {
             let found = FuzzyMatch.containsLiterally(phrase, in: competition.title)
@@ -108,10 +123,38 @@ public struct SearchQuery: Equatable, Sendable {
     /// The operators the language understands. `tag:` joins this list once
     /// competitions persist their tags (COMP-6).
     public enum Field: String, CaseIterable, Sendable {
-        case category, region, source
+        case category, region, source, deadline
 
         /// Shown in the autocomplete.
         public var token: String { "\(rawValue):" }
+
+        /// One line describing what the operator does.
+        public var hint: String {
+            switch self {
+            case .category: "Competition kind"
+            case .region: "Where it runs"
+            case .source: "Which feed found it"
+            case .deadline: "Closing within"
+            }
+        }
+
+        /// Everything this field accepts, in the order the autocomplete offers
+        /// it. Drawn from the same enums the rest of the app renders, so a
+        /// label can never drift from what the list shows.
+        public var values: [(value: String, label: String)] {
+            switch self {
+            case .category:
+                CompetitionCategory.allCases.map { ($0.rawValue, $0.displayName) }
+            case .region:
+                Region.allCases.map { ($0.rawValue, $0.displayName) }
+            case .source:
+                SourceID.allCases.map { ($0.rawValue, $0.displayName) }
+            case .deadline:
+                DeadlineSpan.all.map {
+                    ($0.searchAliases[0], "Within \($0.days) day\($0.days == 1 ? "" : "s")")
+                }
+            }
+        }
 
         /// Exact name, or a prefix of at least three characters so `cat:` works.
         ///
@@ -181,8 +224,37 @@ public struct SearchQuery: Equatable, Sendable {
             guard let match = Self.resolve(value, among: SourceID.allCases,
                                            aliases: \.searchAliases) else { return false }
             sources.insert(match)
+        case .deadline:
+            guard let days = Self.days(from: value) else { return false }
+            // Narrowest wins, so `deadline:week deadline:month` means week.
+            withinDays = min(withinDays ?? days, days)
         }
         return true
+    }
+
+    /// A window a person can name, as days.
+    struct DeadlineSpan {
+        let days: Int
+        let searchAliases: [String]
+
+        static let all: [DeadlineSpan] = [
+            DeadlineSpan(days: 1, searchAliases: ["today", "now"]),
+            DeadlineSpan(days: 2, searchAliases: ["tomorrow"]),
+            DeadlineSpan(days: 7, searchAliases: ["week", "soon"]),
+            DeadlineSpan(days: 14, searchAliases: ["fortnight"]),
+            DeadlineSpan(days: 30, searchAliases: ["month"]),
+            DeadlineSpan(days: 90, searchAliases: ["quarter"]),
+            DeadlineSpan(days: 365, searchAliases: ["year"]),
+        ]
+    }
+
+    /// A deadline window: a plain number of days, `30d`, or a named span.
+    static func days(from value: String) -> Int? {
+        let folded = FuzzyMatch.fold(value)
+        let numeric = folded.hasSuffix("d") ? String(folded.dropLast()) : folded
+        if let days = Int(numeric), days > 0 { return days }
+        return Self.resolve(folded, among: DeadlineSpan.all,
+                            aliases: \.searchAliases)?.days
     }
 
     static func resolve<T>(
@@ -277,6 +349,7 @@ public struct SearchQuery: Equatable, Sendable {
             .map { "region:\($0.rawValue)" }
         parts += SourceID.allCases.filter(sources.contains)
             .map { "source:\($0.rawValue)" }
+        if let withinDays { parts.append("deadline:\(withinDays)d") }
         parts += phrases.map { "\"\($0)\"" }
         parts += terms
         return parts.joined(separator: " ")

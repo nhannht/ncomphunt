@@ -5,58 +5,40 @@ import SwiftUI
 struct MainWindow: View {
     @Environment(AppModel.self) private var model
     @State private var selectedID: PersistentIdentifier?
-    @State private var searchText = ""
-    @AppStorage("list.filter") private var filter: CompetitionFilter = .all
+
+    /// Everything the person is filtering and searching by, as text.
+    ///
+    /// The single source of truth. The sidebar and the region menu do not hold
+    /// their own state - they WRITE into this string and read their appearance
+    /// back out of it. That is what removes the class of bug where a chip said
+    /// one thing while the sidebar said another: with one value there is
+    /// nothing to disagree.
+    @AppStorage("list.query") private var queryText = ""
     @AppStorage("list.sort") private var sort: ListSort = .deadline
     @AppStorage("list.grouping") private var grouping: ListGrouping = .none
-    @AppStorage("list.region") private var region: RegionFilter = .all
 
-    /// A resolved filter that has taken over from the controls, when one exists.
-    ///
-    /// Exactly one of these two drives the list at a time, and the precedence
-    /// is unconditional: while this is non-nil it IS the filter, and touching
-    /// any control puts the controls back in charge by clearing it. There is no
-    /// merge, so there is never a moment where a chip and a control disagree
-    /// about what is being shown.
-    @State private var resolvedQuery: CompetitionQuery?
+    /// Derived, never read here. Written on every query change purely so the
+    /// menu bar and the widget - which take ONE optional category and ONE
+    /// optional region - keep working. See `syncMenuBarLens`.
+    @AppStorage("list.filter") private var menuBarCategory: CompetitionFilter = .all
+    @AppStorage("list.region") private var menuBarRegion: RegionFilter = .all
+
     @State private var isResolving = false
     @State private var queryMessage: String?
 
-    /// The filter controls projected into the one value the list consumes.
-    ///
-    /// The controls stay the single source of truth for this path - a
-    /// projection, not a copy - so there is nothing to keep in sync.
-    private var controlsQuery: CompetitionQuery {
-        CompetitionQuery(
-            categories: filter.categoryValue.map { [$0] } ?? [],
-            region: region.regionValue,
-            // Free text is tokenized and ranks results rather than gating them,
-            // so "open cup" now finds a title carrying both words apart and a
-            // word nothing contains can no longer blank the list on its own.
-            terms: CompetitionQuery.tokenize(searchText))
-    }
-
-    private var activeQuery: CompetitionQuery { resolvedQuery ?? controlsQuery }
+    private var query: SearchQuery { SearchQuery.parse(queryText) }
 
     /// Present only in a build that registered a generator.
     private var generator: (any QueryGenerating)? { ProRegistry.queryGenerator }
 
     var body: some View {
         NavigationSplitView {
-            List(CompetitionFilter.allCases, selection: $filter) { item in
+            List(CompetitionFilter.allCases, selection: sidebarSelection) { item in
                 Label(item.label, systemImage: item.systemImage).tag(item)
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 200)
         } content: {
             VStack(spacing: 0) {
-                if let resolvedQuery {
-                    QueryChips(query: resolvedQuery) { updated in
-                        // Clearing the last chip hands control back rather than
-                        // leaving an empty filter that matches everything.
-                        self.resolvedQuery = updated.isEmpty ? nil : updated
-                    }
-                    Divider()
-                }
                 if let queryMessage {
                     Text(queryMessage)
                         .font(.caption)
@@ -66,7 +48,7 @@ struct MainWindow: View {
                     Divider()
                 }
                 CompetitionListPane(
-                    query: activeQuery, title: paneTitle, sort: sort,
+                    query: query, title: paneTitle, sort: sort,
                     grouping: grouping, onRelax: relax, onClear: clearFilters,
                     selectedID: $selectedID)
             }
@@ -74,7 +56,18 @@ struct MainWindow: View {
         } detail: {
             CompetitionDetailPane(selectedID: selectedID)
         }
-        .searchable(text: $searchText, prompt: searchPrompt)
+        .searchable(text: $queryText, prompt: searchPrompt)
+        .searchSuggestions {
+            ForEach(SearchQuery.suggestions(for: queryText)) { suggestion in
+                HStack {
+                    Text(suggestion.label)
+                    Spacer()
+                    Text(suggestion.detail)
+                        .foregroundStyle(.secondary)
+                }
+                .searchCompletion(suggestion.completion)
+            }
+        }
         .onSubmit(of: .search, resolveSearchText)
         .navigationTitle("nCompHunt")
         .toolbar {
@@ -86,9 +79,9 @@ struct MainWindow: View {
                         Button("Ask", systemImage: "sparkles", action: resolveSearchText)
                             .disabled(
                                 generator.unavailableReason != nil
-                                    || searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                                    || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                             .help(generator.unavailableReason
-                                ?? "Turn what you typed into a filter")
+                                ?? "Turn what you typed into filters")
                     }
                 }
             }
@@ -108,12 +101,12 @@ struct MainWindow: View {
             }
             ToolbarItem(placement: .secondaryAction) {
                 Menu {
-                    Picker("Region", selection: $region) {
+                    Picker("Region", selection: regionSelection) {
                         ForEach(RegionFilter.allCases) { Text($0.label).tag($0) }
                     }
                     .pickerStyle(.inline)
                 } label: {
-                    Label("Filter by region", systemImage: region.isActive
+                    Label("Filter by region", systemImage: regionSelection.wrappedValue.isActive
                         ? "line.3.horizontal.decrease.circle.fill"
                         : "line.3.horizontal.decrease.circle")
                 }
@@ -129,39 +122,105 @@ struct MainWindow: View {
             }
         }
         .task {
+            adoptLegacyFilters()
             model.startAutoRefresh()
             applyDeepLinkSelection()
         }
-        // Touching a control hands the filter back to the controls. Without
-        // this the sidebar would appear to do nothing while a resolved query
-        // was active.
-        .onChange(of: filter) { resolvedQuery = nil; model.recomputeMenuBar() }
-        .onChange(of: region) { resolvedQuery = nil; model.recomputeMenuBar() }
-        .onChange(of: searchText) {
-            if !searchText.isEmpty { resolvedQuery = nil }
+        .onChange(of: queryText) {
             queryMessage = nil
+            syncMenuBarLens()
         }
         .onChange(of: model.deepLinkSelection) { applyDeepLinkSelection() }
     }
 
+    // MARK: Controls that write into the query
+
+    /// The sidebar reads its highlight out of the query and writes back into it.
+    ///
+    /// Several categories cannot be shown as one highlighted row, so the
+    /// selection falls back to "All" then. The query still holds them and the
+    /// list still honours them - the sidebar simply cannot draw that state, and
+    /// inventing a fake one would be worse than admitting it.
+    private var sidebarSelection: Binding<CompetitionFilter> {
+        Binding {
+            guard query.categories.count == 1, let only = query.categories.first
+            else { return .all }
+            return .category(only)
+        } set: { chosen in
+            var updated = query
+            updated.categories = chosen.categoryValue.map { [$0] } ?? []
+            queryText = updated.serialized()
+        }
+    }
+
+    private var regionSelection: Binding<RegionFilter> {
+        Binding {
+            guard query.regions.count == 1, let only = query.regions.first
+            else { return .all }
+            return RegionFilter(only)
+        } set: { chosen in
+            var updated = query
+            updated.regions = chosen.regionValue.map { [$0] } ?? []
+            queryText = updated.serialized()
+        }
+    }
+
+    /// Keep the countdown and the widget working across a signature they do not
+    /// share with the query.
+    ///
+    /// `nextUpcoming` takes ONE optional category and ONE optional region;
+    /// a query carries sets. The rule, deliberately narrow: a query naming
+    /// exactly one category persists it, and zero or several persists "all".
+    /// The menu bar tracks a LENS, not a search - it counts down to the next
+    /// contest worth knowing about, and free text has no bearing on that.
+    private func syncMenuBarLens() {
+        menuBarCategory = query.categories.count == 1
+            ? .category(query.categories.first!) : .all
+        menuBarRegion = query.regions.count == 1
+            ? RegionFilter(query.regions.first!) : .all
+        model.recomputeMenuBar()
+    }
+
+    /// Carry a pre-query install's sidebar and region choice into the query
+    /// text, once. Without this an update silently resets what someone was
+    /// looking at, including their menu-bar countdown.
+    private func adoptLegacyFilters() {
+        guard queryText.isEmpty else { return }
+        var adopted = SearchQuery()
+        if let category = menuBarCategory.categoryValue { adopted.categories = [category] }
+        if let region = menuBarRegion.regionValue { adopted.regions = [region] }
+        guard !adopted.isEmpty else { return }
+        queryText = adopted.serialized()
+    }
+
+    // MARK: Presentation
+
     private var searchPrompt: String {
         generator == nil
-            ? "Search competitions"
+            ? "Search, or filter with category:"
             : "Search, or describe what you want and press Return"
     }
 
     private var paneTitle: String {
-        resolvedQuery == nil ? filter.label : "Results"
+        if query.hasFreeText { return "Results" }
+        if query.categories.count == 1, let only = query.categories.first {
+            return only.displayName
+        }
+        return "All"
     }
 
-    /// Hand the typed sentence to the generator and let the result take over.
+    // MARK: Actions
+
+    /// Hand the typed sentence to the generator and let it rewrite the query.
     ///
-    /// Every failure path leaves the list exactly as it was and says why. A
-    /// half-applied filter would be worse than none, because nothing on screen
-    /// would reveal that it was partial.
+    /// The result lands in the search field as the same operator syntax a
+    /// person types by hand. That is the whole reason this is text: whatever
+    /// the model decided is visible, editable, and correctable in the one place
+    /// they were already looking, rather than an opaque state they can only
+    /// accept or discard.
     private func resolveSearchText() {
         guard let generator, generator.unavailableReason == nil else { return }
-        let text = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !isResolving else { return }
         isResolving = true
         Task {
@@ -171,11 +230,7 @@ struct MainWindow: View {
                 if resolved.isEmpty {
                     queryMessage = "Nothing in that named a category, region, or timeframe."
                 } else {
-                    resolvedQuery = resolved
-                    queryMessage = nil
-                    // The sentence became the chips, so leaving it in the field
-                    // would filter the results a second time by its literal text.
-                    searchText = ""
+                    queryText = resolved.serialized()
                 }
             } catch {
                 queryMessage = error.localizedDescription
@@ -183,33 +238,15 @@ struct MainWindow: View {
         }
     }
 
-    /// Drop one constraint, from whichever source currently owns the filter.
-    ///
-    /// The two sources are never merged - a resolved query replaces the
-    /// controls wholesale - so the removal has to go to the one in charge, or
-    /// it would appear to do nothing.
+    /// Drop one constraint the person could not have known was the costly one.
     private func relax(_ axis: QueryAxis) {
-        if var resolved = resolvedQuery {
-            resolved.remove(axis)
-            resolvedQuery = resolved.isEmpty ? nil : resolved
-            return
-        }
-        switch axis {
-        case .category: filter = .all
-        case .region: region = .all
-        case .term: searchText = ""
-        case .deadline:
-            // The controls cannot express a date window; only a resolved query
-            // can, and that branch returned above.
-            break
-        }
+        var updated = query
+        updated.remove(axis)
+        queryText = updated.serialized()
     }
 
     private func clearFilters() {
-        resolvedQuery = nil
-        searchText = ""
-        filter = .all
-        region = .all
+        queryText = ""
         queryMessage = nil
     }
 
@@ -223,7 +260,7 @@ struct MainWindow: View {
 }
 
 struct CompetitionListPane: View {
-    let query: CompetitionQuery
+    let query: SearchQuery
     let title: String
     let sort: ListSort
     let grouping: ListGrouping
@@ -235,36 +272,43 @@ struct CompetitionListPane: View {
     @Environment(AppModel.self) private var model
     @Query private var competitions: [Competition]
 
-    /// Surviving rows, best text match first when text was typed.
+    /// Surviving rows: best text match first when text was typed, finished
+    /// competitions always last.
+    ///
+    /// Ended rows are pushed down by a separate sort key rather than a score
+    /// penalty, so no amount of text relevance can lift a contest that already
+    /// closed above one a person can still enter.
     ///
     /// Relevance takes precedence over the chosen sort ONLY while free text is
-    /// active, because a person who typed something is asking "which of these
-    /// is what I meant" rather than "which is soonest". The chosen sort still
+    /// active, because someone who typed something is asking "which of these is
+    /// what I meant" rather than "which is soonest". The chosen sort still
     /// breaks ties, and the subtitle says when this is happening so the
     /// reordering is never silent.
     private var visible: [Competition] {
         let now = Date.now
-        let ranked = competitions.compactMap { competition -> (Competition, Int)? in
-            guard competition.isCurrent(asOf: now),
-                  let score = query.score(competition) else { return nil }
-            return (competition, score)
+        let scored = competitions.compactMap {
+            competition -> (item: Competition, score: Int, ended: Bool)? in
+            guard query.admits(competition, now: now),
+                  query.isVisible(competition, now: now) else { return nil }
+            return (competition, query.relevance(of: competition),
+                    !competition.isCurrent(asOf: now))
         }
-        guard isRanked else { return ranked.map(\.0).sorted(by: sort.areInOrder) }
-        return ranked
-            .sorted { a, b in
-                a.1 == b.1 ? sort.areInOrder(a.0, b.0) : a.1 > b.1
-            }
-            .map(\.0)
+        return scored.sorted { a, b in
+            if a.ended != b.ended { return b.ended }
+            if isRanked, a.score != b.score { return a.score > b.score }
+            return sort.areInOrder(a.item, b.item)
+        }
+        .map(\.item)
     }
 
     private var isRanked: Bool { !query.terms.isEmpty }
 
     /// Groups keep the item sort inside them and appear in order of their
     /// best-ranked item, so under deadline sort the most urgent group leads.
-    private var groups: [(key: String, items: [Competition])] {
+    private func groups(of items: [Competition]) -> [(key: String, items: [Competition])] {
         var order: [String] = []
         var buckets: [String: [Competition]] = [:]
-        for competition in visible {
+        for competition in items {
             let key = grouping.key(for: competition) ?? ""
             if buckets[key] == nil { order.append(key) }
             buckets[key, default: []].append(competition)
@@ -273,15 +317,20 @@ struct CompetitionListPane: View {
     }
 
     var body: some View {
-        Group {
-            if visible.isEmpty {
+        let rows = visible
+        let now = Date.now
+        let live = rows.filter { $0.isCurrent(asOf: now) }
+        let ended = rows.filter { !$0.isCurrent(asOf: now) }
+
+        return Group {
+            if rows.isEmpty {
                 ContentUnavailableView {
                     Label("No competitions", systemImage: "trophy")
                 } description: {
                     Text(emptyDescription)
                 } actions: {
                     // A dead end becomes one click. Which constraint is
-                    // expensive is invisible from the chips alone - a category
+                    // expensive is invisible from the query alone - a category
                     // holding one current competition looks exactly like one
                     // holding forty.
                     if let diagnosis {
@@ -289,21 +338,26 @@ struct CompetitionListPane: View {
                             onRelax(diagnosis.axis)
                         }
                     } else if !query.isEmpty {
-                        Button("Clear all filters") { onClear() }
+                        Button("Clear search") { onClear() }
                     }
                 }
             } else {
                 List(selection: $selectedID) {
                     if grouping == .none {
-                        ForEach(visible) { competition in
-                            row(competition)
+                        ForEach(live) { row($0) }
+                        if !ended.isEmpty {
+                            // Kept visible rather than filtered away: the one
+                            // competition answering a search is worth showing
+                            // even when it closed last week, as long as nothing
+                            // pretends it is still open.
+                            Section("Ended") {
+                                ForEach(ended) { row($0) }
+                            }
                         }
                     } else {
-                        ForEach(groups, id: \.key) { group in
+                        ForEach(groups(of: rows), id: \.key) { group in
                             Section("\(group.key) (\(group.items.count))") {
-                                ForEach(group.items) { competition in
-                                    row(competition)
-                                }
+                                ForEach(group.items) { row($0) }
                             }
                         }
                     }
@@ -311,7 +365,7 @@ struct CompetitionListPane: View {
             }
         }
         .navigationTitle(title)
-        .navigationSubtitle(subtitle)
+        .navigationSubtitle(subtitle(live: live.count, ended: ended.count))
     }
 
     private func row(_ competition: Competition) -> some View {
@@ -322,8 +376,9 @@ struct CompetitionListPane: View {
             }
     }
 
-    private var subtitle: String {
-        var parts = ["\(visible.count) shown"]
+    private func subtitle(live: Int, ended: Int) -> String {
+        var parts = ["\(live) shown"]
+        if ended > 0 { parts.append("\(ended) ended") }
         if isRanked { parts.append("best match first") }
         if let last = model.lastRefresh {
             parts.append("updated \(last.formatted(.relative(presentation: .named)))")
@@ -331,10 +386,10 @@ struct CompetitionListPane: View {
         return parts.joined(separator: " · ")
     }
 
-    /// Which single constraint is costing the most, computed only when the list
-    /// is empty so the scan never runs on the common path.
+    /// Which single constraint is costing the most. Returns nil while anything
+    /// is on screen, so the scan never runs on the common path.
     private var diagnosis: QueryDiagnosis? {
-        guard visible.isEmpty, !competitions.isEmpty else { return nil }
+        guard !competitions.isEmpty else { return nil }
         return query.narrowestConstraint(in: competitions)
     }
 
@@ -351,7 +406,7 @@ struct CompetitionListPane: View {
         if !query.isEmpty {
             // Jointly unsatisfiable, so naming one axis would promise results
             // that removing it does not produce.
-            return "No current competition matches this combination."
+            return "No competition matches this combination."
         }
         return "Nothing matches this filter."
     }

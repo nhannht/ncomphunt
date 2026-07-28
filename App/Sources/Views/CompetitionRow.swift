@@ -4,13 +4,25 @@ import SwiftUI
 struct CompetitionRow: View {
     let competition: Competition
 
+    /// A finished competition still appears when it answers a search, so the
+    /// row has to say so unmistakably. Greyed AND labelled, not one or the
+    /// other: colour alone is not a message everyone can read.
+    private var hasEnded: Bool { !competition.isCurrent() }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 6) {
                 Text(competition.title)
                     .font(.headline)
                     .lineLimit(1)
-                if competition.isNew() {
+                if hasEnded {
+                    Text("ENDED")
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(.quaternary, in: Capsule())
+                        .foregroundStyle(.secondary)
+                } else if competition.isNew() {
                     Text("NEW")
                         .font(.caption2.bold())
                         .padding(.horizontal, 4)
@@ -42,10 +54,22 @@ struct CompetitionRow: View {
             }
         }
         .padding(.vertical, 2)
+        .opacity(hasEnded ? 0.55 : 1)
     }
 
     private var dateLine: String {
         let now = Date.now
+        if hasEnded {
+            // Say when it closed rather than falling through to the source
+            // name, which reads as though the row simply has no dates.
+            if let end = competition.endDate {
+                return "ended \(end.formatted(.relative(presentation: .named)))"
+            }
+            if let deadline = competition.registrationDeadline {
+                return "closed \(deadline.formatted(.relative(presentation: .named)))"
+            }
+            return competition.source
+        }
         if let deadline = competition.registrationDeadline {
             return "due \(deadline.formatted(.relative(presentation: .named)))"
         }

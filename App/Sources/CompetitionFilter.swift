@@ -169,4 +169,13 @@ extension RegionFilter {
         case .global: .global
         }
     }
+
+    /// The reverse, for reading the toolbar's state back out of a query.
+    init(_ region: Region?) {
+        switch region {
+        case .vietnam: self = .vietnam
+        case .global: self = .global
+        case nil: self = .all
+        }
+    }
 }

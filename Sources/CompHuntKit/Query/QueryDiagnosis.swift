@@ -1,20 +1,38 @@
 import Foundation
 
-/// One removable piece of a query. Mirrors what the chips show, so anything
-/// the person can see they can also be told about.
+/// One removable constraint of a query.
+///
+/// Only things that FILTER appear here. Bare terms are absent by construction:
+/// they rank and never exclude, so removing one can never reveal a row and
+/// offering it would be a suggestion that does nothing.
 public enum QueryAxis: Equatable, Sendable {
     case category(CompetitionCategory)
     case region(Region)
+    case source(SourceID)
     case deadline
-    case term(String)
+    case phrase(String)
 
     /// How this reads in a sentence shown to a person.
     public var label: String {
         switch self {
         case .category(let category): category.displayName
         case .region(let region): region.displayName
-        case .deadline: "the date range"
-        case .term(let term): "\u{201C}\(term)\u{201D}"
+        case .source(let source): source.displayName
+        case .deadline: "the deadline window"
+        case .phrase(let phrase): "\u{201C}\(phrase)\u{201D}"
+        }
+    }
+
+    /// The operator that expresses it, so a removal can be applied to the
+    /// query TEXT rather than to a parsed value that would then have to be
+    /// serialized back and could disagree with what is on screen.
+    public var token: String? {
+        switch self {
+        case .category(let category): "category:\(category.rawValue)"
+        case .region(let region): "region:\(region.rawValue)"
+        case .source(let source): "source:\(source.rawValue)"
+        case .deadline: nil
+        case .phrase: nil
         }
     }
 }
@@ -31,44 +49,54 @@ public struct QueryDiagnosis: Equatable, Sendable {
     }
 }
 
-public extension CompetitionQuery {
-    /// Every constraint currently narrowing the list, in the order the chips
-    /// render them.
+public extension SearchQuery {
+    /// Every constraint currently narrowing the list.
     var activeAxes: [QueryAxis] {
-        var axes = CompetitionCategory.allCases
-            .filter(categories.contains)
-            .map(QueryAxis.category)
-        if let region { axes.append(.region(region)) }
-        if deadlineAfter != nil || deadlineBefore != nil { axes.append(.deadline) }
-        axes += terms.map(QueryAxis.term)
+        // Fixed taxonomy order rather than Set order, so the same query always
+        // diagnoses the same way.
+        var axes = CompetitionCategory.allCases.filter(categories.contains).map(QueryAxis.category)
+        axes += Region.allCases.filter(regions.contains).map(QueryAxis.region)
+        axes += SourceID.allCases.filter(sources.contains).map(QueryAxis.source)
+        if withinDays != nil { axes.append(.deadline) }
+        axes += phrases.map(QueryAxis.phrase)
         return axes
     }
 
     mutating func remove(_ axis: QueryAxis) {
         switch axis {
         case .category(let category): categories.remove(category)
-        case .region: region = nil
-        case .deadline:
-            deadlineAfter = nil
-            deadlineBefore = nil
-        case .term(let term): terms.removeAll { $0 == term }
+        case .region(let region): regions.remove(region)
+        case .source(let source): sources.remove(source)
+        case .deadline: withinDays = nil
+        case .phrase(let phrase): phrases.removeAll { $0 == phrase }
         }
     }
 
-    /// Competitions this query currently shows.
+    /// Competitions this query currently shows, under the same visibility rule
+    /// the list uses - otherwise a suggestion could promise rows the list would
+    /// then decline to show.
     func matchCount(in competitions: [Competition], now: Date = .now) -> Int {
-        competitions.filter { $0.isCurrent(asOf: now) && matches($0) }.count
+        competitions.count { admits($0, now: now) && isVisible($0, now: now) }
+    }
+
+    /// Whether a competition may appear at all.
+    ///
+    /// Finished competitions are shown only when the person typed something to
+    /// search FOR and this row answers it. Browsing a category is not searching,
+    /// so it stays free of rows that already ended, and a search never hides the
+    /// one real answer just because it closed last week.
+    func isVisible(_ competition: Competition, now: Date = .now) -> Bool {
+        if competition.isCurrent(asOf: now) { return true }
+        return hasFreeText && relevance(of: competition) > 0
     }
 
     /// The one constraint whose removal would reveal the most competitions, or
     /// nil when no single removal would help.
     ///
-    /// Exists because "Nothing matches this filter" is a dead end. A generated
-    /// query can carry four constraints at once, and a person has no way to
-    /// know which of them is the expensive one - a category holding a single
-    /// current competition looks exactly like a category holding forty. The app
-    /// can measure that in a few hundred comparisons, so it should say which
-    /// chip to remove rather than leaving it to be guessed.
+    /// Worth more now than it used to be. An empty list can no longer be caused
+    /// by typing, so reaching one always means a deliberate operator or a quoted
+    /// phrase - exactly the case where naming the expensive constraint pays,
+    /// and the counts no longer include rows that only matched by accident.
     ///
     /// Deliberately reports ONE axis, not a ranked list. The goal is a single
     /// obvious click, and a menu of options is the same dead end with more
@@ -76,14 +104,17 @@ public extension CompetitionQuery {
     func narrowestConstraint(
         in competitions: [Competition], now: Date = .now
     ) -> QueryDiagnosis? {
-        let current = matchCount(in: competitions, now: now)
+        // Only a list with nothing in it is a dead end. Suggesting a removal
+        // while results are on screen would be nagging about a filter that is
+        // not costing anything.
+        guard matchCount(in: competitions, now: now) == 0 else { return nil }
         var best: QueryDiagnosis?
         for axis in activeAxes {
             var relaxed = self
             relaxed.remove(axis)
             let count = relaxed.matchCount(in: competitions, now: now)
             // Only worth mentioning if it actually reveals something.
-            guard count > current else { continue }
+            guard count > 0 else { continue }
             if best == nil || count > best!.countWithout {
                 best = QueryDiagnosis(axis: axis, countWithout: count)
             }

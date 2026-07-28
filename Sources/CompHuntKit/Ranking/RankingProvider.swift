@@ -21,7 +21,7 @@ public struct RankedCompetition: Sendable {
 
 /// Scores competitions against whatever profile the implementation holds.
 ///
-/// Contract, and the reason scoring is not merely another `CompetitionQuery`
+/// Contract, and the reason scoring is not merely another `SearchQuery`
 /// axis: the score must be STABLE across refreshes. A ranked list that
 /// reshuffles because the same inputs scored differently is worse than no
 /// ranking. That is why no model output may reach a score, while it may drive a

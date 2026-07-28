@@ -1,6 +1,6 @@
 import Foundation
 
-/// Turns a person's sentence into a `CompetitionQuery`.
+/// Turns a person's sentence into a `SearchQuery`.
 ///
 /// Declared here, never implemented here. The only implementation is on-device
 /// and lives outside this package; this repository holds the contract so the
@@ -8,7 +8,7 @@ import Foundation
 public protocol QueryGenerating: Sendable {
     /// `now` is injected rather than read inside, so relative phrasing like
     /// "this month" resolves deterministically and the mapping stays testable.
-    func generate(from text: String, now: Date) async throws -> CompetitionQuery
+    func generate(from text: String, now: Date) async throws -> SearchQuery
 
     /// nil when generation is usable right now. Otherwise a sentence fit to
     /// show a person, explaining why it is not.

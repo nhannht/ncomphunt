@@ -138,25 +138,25 @@ private var spectral: Competition {
 
     @Test func aWordMatchingNothingStillAdmitsEveryRow() {
         let query = SearchQuery.parse("zzzzzz")
-        #expect(index.allSatisfy(query.admits))
+        #expect(index.allSatisfy { query.admits($0) })
     }
 
     @Test func aPartiallyMatchedQueryAdmitsEveryRow() {
         // "open cup" - the reported case. Under the old ANDed rule this
         // returned nothing at all.
         let query = SearchQuery.parse("open cup")
-        #expect(index.allSatisfy(query.admits))
+        #expect(index.allSatisfy { query.admits($0) })
     }
 
     @Test func operatorsDoExclude() {
         // Deliberate acts are allowed to empty the list; typing is not.
         let query = SearchQuery.parse("category:design")
-        #expect(!index.contains(where: query.admits))
+        #expect(!index.contains { query.admits($0) })
     }
 
     @Test func quotedPhrasesDoExclude() {
-        #expect(!index.contains(where: SearchQuery.parse("\"open cup\"").admits))
-        #expect(index.contains(where: SearchQuery.parse("\"open atlas\"").admits))
+        #expect(!index.contains { SearchQuery.parse("\"open cup\"").admits($0) })
+        #expect(index.contains { SearchQuery.parse("\"open atlas\"").admits($0) })
     }
 }
 
