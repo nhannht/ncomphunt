@@ -1,11 +1,11 @@
-import Features from "@/components/site/Features";
+import FeatureSections from "@/components/site/FeatureSections";
 import Footer from "@/components/site/Footer";
 import Gallery from "@/components/site/Gallery";
 import Hero from "@/components/site/Hero";
 import NavBar from "@/components/site/NavBar";
 import OpenSource from "@/components/site/OpenSource";
+import SmallFeatures from "@/components/site/SmallFeatures";
 import Sources from "@/components/site/Sources";
-import Surfaces from "@/components/site/Surfaces";
 import Vietnam from "@/components/site/Vietnam";
 import { site } from "@/lib/site";
 
@@ -30,8 +30,8 @@ export default function Home() {
       <NavBar />
       <main>
         <Hero />
-        <Features />
-        <Surfaces />
+        <FeatureSections />
+        <SmallFeatures />
         <Sources />
         <Vietnam />
         <Gallery />
