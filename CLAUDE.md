@@ -165,13 +165,16 @@ needs a rebuild per app release. Distribution is both direct (GitHub release DMG
 + Homebrew cask `nhannht/homebrew-tap`, Developer ID + notarized) and the Mac App
 Store (app id 6791654003, sandboxed build).
 
-Deployed at https://ncomphunt.nhannht.io.vn : `output: "export"` static build
-(`images.unoptimized`, sitemap/robots `force-static`) rsynced from `out/` to
-sg-hs `/var/www/ncomphunt.nhannht.io.vn`, nginx site `ncomphunt-nhannht-io-vn`
-+ certbot TLS, Cloudflare proxied A record (zone nhannht.io.vn, token in
-`~/.config/cloudflare/api_token.env`). Redeploy = build + same rsync. Note:
-with `output: "export"`, `next start` no longer serves - preview `out/` with
-any static server. Screenshots are copied from `showcase/`
+Deployed at https://ncomphunt.nhannht.io.vn via GitHub Pages (migrated off the
+sg-hs nginx rsync 2026-07-31): `.github/workflows/deploy-website.yml` builds
+the `output: "export"` static site (`images.unoptimized`, sitemap/robots
+`force-static`) with pnpm on every master push touching `website/**` and
+publishes `out/` with actions/deploy-pages. Custom domain lives in
+`website/public/CNAME`; DNS is a Cloudflare CNAME `ncomphunt` ->
+`nhannht.github.io`, DNS-only so GitHub can provision the TLS cert (zone
+nhannht.io.vn, token in `~/.config/cloudflare/api_token.env`). Redeploy = push
+to master. Note: with `output: "export"`, `next start` no longer serves -
+preview `out/` with any static server. Screenshots are copied from `showcase/`
 into `website/public/screenshots/` (hero uses `raw/lightmodemain.png`; the
 gallery uses the five `appstore/as*.png` renders). SEO: metadata + OpenGraph in
 `app/layout.tsx`, JSON-LD SoftwareApplication in `app/page.tsx`,
