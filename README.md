@@ -30,6 +30,13 @@ Built in Swift 6 / SwiftUI with SwiftData persistence. There is no account to
 create and no setup: the app talks directly to the public sources below and
 keeps its index in local storage on your Mac.
 
+## How it works
+
+Every refresh fans out to all enabled sources in parallel, deduplicates by
+normalized URL, and lands everything in one list. Filter it, put a deadline on
+the calendar, and get a notification when something new arrives.
+
+![Animated schematic: sources feeding one list, a filter click, a calendar entry, and a notification](./assets/schematics/schematic-hero.gif)
 
 ## Install
 
@@ -94,21 +101,56 @@ The `~/.claude.json` discovery under `mcpServers.youtrack` is a fallback for the
 `CompHuntKit` library outside the app (tests and CLI use) - the shipped app is
 sandboxed and cannot reach that file.
 
-## Actions
+## Menu bar
 
-![](./showcase/appstore/as4-actions.png)
+The menu bar extra keeps the next deadlines one click away all day, with live
+countdowns on what is closing soon. Skim it and get back to work - no window
+needed.
+
+![Animated schematic: the status item opens a dropdown of upcoming deadlines with countdowns](./assets/schematics/schematic-menubar.gif)
+
+## Filter, sort, group
+
+Category and region filters, sort by deadline or first seen, and grouping that
+shows the week at a glance - all from the toolbar of a native SwiftUI window.
+
+![Animated schematic: one click sorts the list, the next clusters it under group headers](./assets/schematics/schematic-filter.gif)
+
+## Calendar sync
+
+Optional sync mirrors every tracked deadline into a dedicated "nCompHunt"
+Apple Calendar and keeps it reconciled: when an organizer moves a date, the
+event moves with it.
+
+![Animated schematic: a sync toggle sends each deadline into a month view, then a moved deadline relocates its event](./assets/schematics/schematic-calendar.gif)
+
+## Notifications
+
+Background refreshes keep hunting while you work. When new competitions are
+found, a native macOS notification tells you - notifications are optional and
+requested only when you turn them on.
+
+![Animated schematic: a background refresh drops new rows into the list and a notification slides in](./assets/schematics/schematic-notifications.gif)
+
+## Actions
 
 Right-click any row (or use the detail header menu): open page, share via the
 system sheet (Notes, Messages, Mail, AirDrop), copy link, add to Calendar as an
 .ics import, and file into YouTrack (if configured).
 
-## Widget
+![Animated schematic: a right-click opens the row context menu and Copy Link confirms](./assets/schematics/schematic-actions.gif)
 
-![](./showcase/appstore/as5-widget.png)
+![](./showcase/appstore/as4-actions.png)
+
+## Widget
 
 An **Upcoming Contests** widget for the desktop and Notification Centre, in
 small and medium sizes, showing the next competitions with a live countdown. It
 reads a snapshot the app writes into a shared App Group container.
+
+![Animated schematic: the desktop widget counts a deadline down and rotates in the next contest](./assets/schematics/schematic-widget.gif)
+
+![](./showcase/appstore/as5-widget.png)
 
 ## Layout
 
