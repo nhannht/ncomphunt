@@ -86,6 +86,9 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   const blueGradId = `blue-grad-${uniqueId}`;
 
   const [svgSupported, setSvgSupported] = useState<boolean>(false);
+  // Resolved in an effect like svgSupported: calling CSS.supports during
+  // render makes the server and client first render disagree (hydration error).
+  const [backdropFilterSupported, setBackdropFilterSupported] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const feImageRef = useRef<SVGFEImageElement>(null);
@@ -163,6 +166,7 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
 
   useEffect(() => {
     setSvgSupported(supportsSVGFilters());
+    setBackdropFilterSupported(supportsBackdropFilter());
   }, []);
 
   useEffect(() => {
@@ -229,8 +233,6 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
       '--glass-frost': backgroundOpacity,
       '--glass-saturation': saturation
     } as React.CSSProperties;
-
-    const backdropFilterSupported = supportsBackdropFilter();
 
     if (svgSupported) {
       return {
