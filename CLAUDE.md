@@ -143,7 +143,7 @@ that was the readability bug. Next.js 16 App Router + Tailwind v4 + shadcn
 (nova preset) + React Bits components (FloatingLines, GlassSurface, GooeyNav,
 SplitText, GradientText, ShinyText, SpotlightCard, LogoLoop, CardSwap, Carousel;
 Aurora, GlareHover, StarBorder, Dock, SpecularButton installed but unused -
-installed via `bunx shadcn add https://reactbits.dev/r/<Name>-TS-TW` into
+installed via `pnpm dlx shadcn add https://reactbits.dev/r/<Name>-TS-TW` into
 `components/`). Site-wide background is FloatingLines (three.js,
 `@types/three` dev dep) mounted fixed inset-0 -z-10 in `site/Background.tsx`
 so it follows the viewport on scroll, with a two-pass scrim over the canvas
@@ -156,8 +156,8 @@ colored by `--color-1..4` in globals.css, and its particle spawner moved to
 `lib/particles.ts` (CSS in globals.css) so `components/ParticleButton.tsx` -
 the site's one button, a `.mbtn` material pill that fills white on hover and
 fires the same burst on click - shares one motion language with the nav.
-bun only: `cd website && bun run build`; dev server binds loopback/Tailscale,
-never 0.0.0.0. Page sections live in `components/site/`; copy and links in
+pnpm only (migrated from bun 2026-07-31): `cd website && pnpm run build`; dev
+server binds loopback/Tailscale, never 0.0.0.0. Page sections live in `components/site/`; copy and links in
 `lib/site.ts` - `downloadUrl` is the evergreen DMG link
 (`releases/latest/download/ncomphunt.dmg`); every GitHub release must upload an
 unversioned `ncomphunt.dmg` asset alongside the versioned one so the site never
