@@ -65,9 +65,7 @@ struct CompetitionDetailPane: View {
                 // Only once marked. An unmarked competition has no pipeline to
                 // be in, and showing an empty one on every row would be noise.
                 if competition.isMarked {
-                    StatusPicker(competition: competition)
-                        .pickerStyle(.segmented)
-                        .labelsHidden()
+                    StatusSegments(competition: competition)
                 }
 
                 if let url = URL(string: competition.url) {

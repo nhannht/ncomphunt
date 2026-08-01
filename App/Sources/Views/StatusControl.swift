@@ -27,9 +27,10 @@ struct MarkButton: View {
     }
 }
 
-/// The pipeline picker. Used inside the actions menu and inline in the detail
-/// surfaces; the selection IS the stored status, so there is no second state to
-/// disagree with what the row shows.
+/// The pipeline picker for the actions menu, where nothing is gated on the
+/// competition being marked - so "Not marked" belongs here as the way out.
+/// The selection IS the stored status, so there is no second state to disagree
+/// with what the row shows.
 struct StatusPicker: View {
     let competition: Competition
 
@@ -46,6 +47,36 @@ struct StatusPicker: View {
                     .tag(CompetitionStatus?.some(status))
             }
         }
+    }
+}
+
+/// The inline pipeline control on the detail surfaces, which only appear once
+/// something is marked.
+///
+/// Deliberately has NO "Not marked" segment. Those surfaces show this only
+/// while `isMarked`, so choosing it would unmark the competition and delete the
+/// control out from under the pointer that just clicked it - recoverable, but
+/// it reads as a crash. Unmarking is the star's job, which is where the person
+/// already learned to do it.
+///
+/// Text rather than Label: a macOS segmented picker does not lay icons and
+/// words out the way a menu does, and five segments of both is a scramble.
+struct StatusSegments: View {
+    let competition: Competition
+
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Picker("Status", selection: Binding(
+            get: { competition.status ?? .interested },
+            set: { model.setStatus($0, for: competition) })
+        ) {
+            ForEach(CompetitionStatus.allCases, id: \.self) { status in
+                Text(status.displayName).tag(status)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
     }
 }
 

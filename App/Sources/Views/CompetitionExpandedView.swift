@@ -42,9 +42,7 @@ struct CompetitionExpandedView: View {
             .font(.caption2)
 
             if competition.isMarked {
-                StatusPicker(competition: competition)
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
+                StatusSegments(competition: competition)
                     .font(.caption2)
             }
 

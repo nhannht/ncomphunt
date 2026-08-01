@@ -279,9 +279,13 @@ extension AppModel {
         do {
             try container.mainContext.save()
         } catch {
-            // Losing a mark silently is the one failure worth surfacing: it is
-            // the only thing in the store the person typed themselves.
-            startupError = "Could not save your mark: \(error.localizedDescription)"
+            // Posted, not written to `startupError` - nothing reads that, so a
+            // failure assigned there is exactly as silent as no report at all.
+            // A mark is the only thing in the store the person put in by hand,
+            // so losing one has to be visible. Same route the YouTrack filing
+            // outcomes take, for the same reason: the menu is already gone.
+            Notifier.post("Could not save your mark",
+                          body: error.localizedDescription)
             return
         }
         // Immediately, not at the next refresh. Marking something is a request
