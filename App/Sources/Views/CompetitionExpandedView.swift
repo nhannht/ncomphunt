@@ -22,6 +22,12 @@ struct CompetitionExpandedView: View {
                         .foregroundStyle(.green)
                 }
                 Spacer()
+                // Same reasoning as the desktop pane: the mark is the point of
+                // the app, so it sits on the surface, not inside a menu.
+                MarkButton(competition: competition)
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .foregroundStyle(competition.isMarked ? .yellow : .secondary)
                 Menu {
                     CompetitionActionsMenu(competition: competition)
                 } label: {
@@ -34,6 +40,13 @@ struct CompetitionExpandedView: View {
                 .fixedSize()
             }
             .font(.caption2)
+
+            if competition.isMarked {
+                StatusPicker(competition: competition)
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .font(.caption2)
+            }
 
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
                 if !competition.organizer.isEmpty {

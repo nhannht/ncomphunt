@@ -12,6 +12,8 @@ struct CompetitionRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
+            StatusIndicator(status: competition.status)
+                .padding(.top, 2)
             CategoryDot(competition.category)
                 .padding(.top, 5)
             VStack(alignment: .leading, spacing: 1) {

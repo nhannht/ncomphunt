@@ -21,6 +21,8 @@ struct CompetitionListPane: View {
     let style: ListStyle
     /// The chip row's read/write line into the query string.
     @Binding var categorySelection: CompetitionFilter?
+    /// The Marked chip's line into the same string.
+    @Binding var markedOnly: Bool
     /// Drop one constraint the person could not have known was the costly one.
     let onRelax: (QueryAxis) -> Void
     let onClear: () -> Void
@@ -72,7 +74,7 @@ struct CompetitionListPane: View {
         case .list:
             HSplitView {
                 VStack(spacing: 0) {
-                    CategoryChipRow(selection: $categorySelection)
+                    CategoryChipRow(selection: $categorySelection, markedOnly: $markedOnly)
                     listOrEmpty(rows: rows)
                 }
                 .frame(minWidth: 320, idealWidth: 420, maxWidth: 560)
@@ -81,7 +83,7 @@ struct CompetitionListPane: View {
             }
         case .table:
             VStack(spacing: 0) {
-                CategoryChipRow(selection: $categorySelection)
+                CategoryChipRow(selection: $categorySelection, markedOnly: $markedOnly)
                 if rows.isEmpty {
                     emptyState
                 } else {
@@ -96,7 +98,7 @@ struct CompetitionListPane: View {
         }
         #else
         VStack(spacing: 0) {
-            CategoryChipRow(selection: $categorySelection)
+            CategoryChipRow(selection: $categorySelection, markedOnly: $markedOnly)
             listOrEmpty(rows: rows)
         }
         #endif

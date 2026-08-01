@@ -29,6 +29,14 @@ struct CompetitionDetailPane: View {
                             .font(.title2.bold())
                             .textSelection(.enabled)
                         Spacer()
+                        // Out of the actions menu and onto the surface: marking
+                        // is the thing people came here to do, and two clicks
+                        // behind an ellipsis is where features go to be unused.
+                        MarkButton(competition: competition)
+                            .labelStyle(.iconOnly)
+                            .buttonStyle(.borderless)
+                            .font(.title3)
+                            .foregroundStyle(competition.isMarked ? .yellow : .secondary)
                         Menu {
                             CompetitionActionsMenu(competition: competition)
                         } label: {
@@ -52,6 +60,14 @@ struct CompetitionDetailPane: View {
                         }
                     }
                     .font(.caption)
+                }
+
+                // Only once marked. An unmarked competition has no pipeline to
+                // be in, and showing an empty one on every row would be noise.
+                if competition.isMarked {
+                    StatusPicker(competition: competition)
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
                 }
 
                 if let url = URL(string: competition.url) {

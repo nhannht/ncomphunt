@@ -33,18 +33,13 @@ struct CompetitionActionsMenu: View {
             Button("Add to Calendar", systemImage: "calendar.badge.plus") {
                 CompetitionActions.addToCalendar(competition)
             }
-            // Muting frees its slots in the reminder window, so the next
-            // competition in line takes them.
-            if model.isReminderMuted(competition) {
-                Button("Unmute Reminders", systemImage: "bell") {
-                    model.setReminderMuted(false, for: competition)
-                }
-            } else {
-                Button("Mute Reminders", systemImage: "bell.slash") {
-                    model.setReminderMuted(true, for: competition)
-                }
-            }
         }
+        Divider()
+        // The mark leads: it is the one action that changes what the app does
+        // for you afterwards, where everything above it is a one-off.
+        MarkButton(competition: competition)
+        StatusPicker(competition: competition)
+            .pickerStyle(.inline)
         Divider()
         YouTrackMenuItem(competition: competition)
     }

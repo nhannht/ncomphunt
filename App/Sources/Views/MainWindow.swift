@@ -55,6 +55,7 @@ struct MainWindow: View {
                     query: query, sort: $sort,
                     grouping: grouping, style: style,
                     categorySelection: categorySelection,
+                    markedOnly: markedOnly,
                     onRelax: relax, onClear: clearFilters,
                     selectedID: $selectedID)
             }
@@ -190,6 +191,19 @@ struct MainWindow: View {
         } set: { chosen in
             var updated = query
             updated.categories = (chosen ?? .all).categoryValue.map { [$0] } ?? []
+            queryText = updated.serialized()
+        }
+    }
+
+    /// The Marked chip, on the same read-out-of-the-query, write-back-into-it
+    /// line as the category chips. On means `status:any`, so the one place the
+    /// truth lives is still the query string.
+    private var markedOnly: Binding<Bool> {
+        Binding {
+            query.isMarkedOnly
+        } set: { wanted in
+            var updated = query
+            updated.statuses = wanted ? Set(CompetitionStatus.allCases) : []
             queryText = updated.serialized()
         }
     }

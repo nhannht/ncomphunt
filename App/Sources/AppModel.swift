@@ -269,6 +269,23 @@ extension AppModel {
 }
 
 extension AppModel {
+    /// Mark, re-mark, or unmark one competition.
+    ///
+    /// The single write path for the app's only user-authored state. Views call
+    /// this rather than assigning through their own model context, so the save
+    /// and the reminder reschedule that follows a mark cannot come apart.
+    func setStatus(_ status: CompetitionStatus?, for competition: Competition) {
+        guard competition.status != status else { return }
+        competition.status = status
+        do {
+            try container.mainContext.save()
+        } catch {
+            // Losing a mark silently is the one failure worth surfacing: it is
+            // the only thing in the store the person typed themselves.
+            startupError = "Could not save your mark: \(error.localizedDescription)"
+        }
+    }
+
     func isReminderMuted(_ competition: Competition) -> Bool {
         mutedReminderKeys.contains(competition.key)
     }
