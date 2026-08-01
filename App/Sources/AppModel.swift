@@ -10,7 +10,16 @@ final class AppModel {
     let container: ModelContainer
 
     private(set) var isRefreshing = false
-    private(set) var lastRefresh: Date?
+    /// Mirrored into UserDefaults so "has this install ever refreshed" survives
+    /// a relaunch. It gates the new-competition notification, and an in-memory
+    /// value meant every launch's FIRST refresh was treated as the initial seed
+    /// and silenced - which is the refresh most likely to have news.
+    private(set) var lastRefresh: Date? {
+        didSet {
+            UserDefaults.standard.set(
+                lastRefresh?.timeIntervalSince1970, forKey: Self.lastRefreshKey)
+        }
+    }
     private(set) var lastReport: RefreshReport?
     private(set) var startupError: String?
 
@@ -25,6 +34,13 @@ final class AppModel {
     /// UserDefaults flag as observable state so the Settings toggle re-renders
     /// (including flipping back if the user denies calendar access).
     private(set) var calendarSyncEnabled: Bool = CalendarSyncService.shared.isEnabled
+
+    /// Reminder state mirrored as observable properties, same reason as
+    /// `calendarSyncEnabled`: the scheduler owns the truth, but a plain
+    /// singleton read would never re-render the Settings rows or the mute item.
+    private(set) var remindersEnabled: Bool = ReminderScheduler.shared.isEnabled
+    private(set) var scheduledReminderCount: Int = 0
+    private(set) var mutedReminderKeys: Set<String> = ReminderScheduler.shared.muted
 
     private var autoRefreshTask: Task<Void, Never>?
     private var countdownTask: Task<Void, Never>?
@@ -49,8 +65,14 @@ final class AppModel {
             // A memory-only container cannot fail to open.
             container = try! ModelContainer(for: Competition.self, configurations: config)
         }
+        // Adopt the persisted value BEFORE any refresh runs, so `isInitialSeed`
+        // means "this install has never refreshed", not "this launch has not".
+        let stored = UserDefaults.standard.double(forKey: Self.lastRefreshKey)
+        if stored > 0 { lastRefresh = Date(timeIntervalSince1970: stored) }
         startMenuBarCountdown()
     }
+
+    private static let lastRefreshKey = "lastRefresh"
 
     func refresh() async {
         guard !isRefreshing else { return }
@@ -79,7 +101,10 @@ final class AppModel {
             Notifier.postNewCompetitions(report.newTitles)
         }
         recomputeMenuBar()
-        await CalendarSyncService.shared.syncIfEnabled(competitions: allCompetitions())
+        let all = allCompetitions()
+        await CalendarSyncService.shared.syncIfEnabled(competitions: all)
+        await ReminderScheduler.shared.reschedule(competitions: all)
+        adoptReminderState()
     }
 
     /// Every persisted competition, or an empty array if the store read fails.
@@ -194,6 +219,13 @@ extension AppModel {
         else { return }
         let descriptor = FetchDescriptor<Competition>(predicate: #Predicate { $0.key == key })
         guard let match = try? container.mainContext.fetch(descriptor).first else { return }
+        // The window filters on `list.query`; `list.filter` and `list.region`
+        // are DERIVED from it for the menu bar and the widget. Clearing only the
+        // derived pair left an active query in force, so a deep link to a
+        // competition outside it selected a row that was not on screen.
+        // Clearing the query is what "make its row visible" now means, and
+        // `syncMenuBarLens` re-derives the other two from it.
+        UserDefaults.standard.set("", forKey: "list.query")
         UserDefaults.standard.set(CompetitionFilter.all.rawValue, forKey: "list.filter")
         UserDefaults.standard.set(RegionFilter.all.rawValue, forKey: "list.region")
         deepLinkSelection = match.persistentModelID
@@ -228,5 +260,44 @@ extension AppModel {
         CalendarSyncService.shared.disable()
         CalendarSyncService.shared.removeCalendar()
         calendarSyncEnabled = false
+    }
+}
+
+extension AppModel {
+    func isReminderMuted(_ competition: Competition) -> Bool {
+        mutedReminderKeys.contains(competition.key)
+    }
+
+    func setRemindersEnabled(_ on: Bool) {
+        Task {
+            await ReminderScheduler.shared.setEnabled(on, competitions: allCompetitions())
+            adoptReminderState()
+        }
+    }
+
+    /// Mute or unmute one competition. The scheduler re-derives the window, so
+    /// a freed slot is refilled by the next competition in line.
+    func setReminderMuted(_ isMuted: Bool, for competition: Competition) {
+        let key = competition.key
+        Task {
+            await ReminderScheduler.shared.setMuted(
+                isMuted, key: key, competitions: allCompetitions())
+            adoptReminderState()
+        }
+    }
+
+    /// Read the true pending count back on launch, before any refresh has run.
+    func loadReminderStatus() {
+        Task {
+            await ReminderScheduler.shared.refreshScheduledCount()
+            adoptReminderState()
+        }
+    }
+
+    /// Pull the scheduler's truth into the observable mirrors.
+    func adoptReminderState() {
+        remindersEnabled = ReminderScheduler.shared.isEnabled
+        scheduledReminderCount = ReminderScheduler.shared.scheduledCount
+        mutedReminderKeys = ReminderScheduler.shared.muted
     }
 }

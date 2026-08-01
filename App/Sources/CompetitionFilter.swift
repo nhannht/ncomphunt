@@ -91,6 +91,30 @@ enum ListSort: String, CaseIterable, Identifiable {
     }
 }
 
+/// How the desktop main window lays out results: a list-plus-detail split or a
+/// full-width sortable table. Persisted via @AppStorage as its raw value.
+/// iOS ignores it - the phone always shows the single tap-to-expand list.
+enum ListStyle: String, CaseIterable, Identifiable {
+    case list
+    case table
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .list: "List"
+        case .table: "Table"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .list: "list.bullet"
+        case .table: "tablecells"
+        }
+    }
+}
+
 /// List grouping, persisted via @AppStorage as its raw value.
 enum ListGrouping: String, CaseIterable, Identifiable {
     case none

@@ -46,44 +46,19 @@ struct ContestProvider: TimelineProvider {
 // MARK: - Deep link
 
 /// Tapping a widget row opens the app to that contest: ncomphunt://open?key=...
+/// Shares the kit's one constructor with the reminder-tap route.
 private func deepLink(for contest: WidgetContest) -> URL {
-    var components = URLComponents()
-    components.scheme = "ncomphunt"
-    components.host = "open"
-    components.queryItems = [URLQueryItem(name: "key", value: contest.key)]
-    return components.url ?? URL(string: "ncomphunt://open")!
-}
-
-private func badgeColor(_ code: String) -> Color {
-    switch code {
-    case "CP": .blue
-    case "CTF": .red
-    case "AI": .purple
-    case "Hack": .orange
-    case "Design": .pink
-    default: .gray
-    }
+    competitionDeepLink(key: contest.key)
 }
 
 // MARK: - Views
 
-private struct CategoryBadge: View {
-    let code: String
-
-    var body: some View {
-        if code.isEmpty {
-            Image(systemName: "trophy.fill")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        } else {
-            Text(code)
-                .font(.system(size: 10, weight: .bold))
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(badgeColor(code).opacity(0.2), in: Capsule())
-                .foregroundStyle(badgeColor(code))
-        }
-    }
+/// The tiny category marker, colored through the kit's single mapping so the
+/// widget can never drift from the app again. An empty code reads as
+/// uncategorized gray.
+@MainActor
+private func categoryDot(_ code: String) -> CategoryDot {
+    CategoryDot(color: CompetitionCategory.tint(forCode: code))
 }
 
 /// A live "in 2 hours" string that updates without a timeline reload. Snapshot
@@ -108,7 +83,7 @@ private struct ContestRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            CategoryBadge(code: contest.categoryCode)
+            categoryDot(contest.categoryCode)
             Text(contest.title)
                 .font(.caption)
                 .lineLimit(1)
@@ -122,14 +97,17 @@ private struct SmallView: View {
     let contest: WidgetContest?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "trophy.fill").foregroundStyle(.yellow)
                 Text("Next contest").font(.caption2).foregroundStyle(.secondary)
             }
             if let contest {
-                CategoryBadge(code: contest.categoryCode)
-                Text(contest.title).font(.subheadline.weight(.semibold)).lineLimit(3)
+                HStack(alignment: .top, spacing: 4) {
+                    categoryDot(contest.categoryCode)
+                        .padding(.top, 4)
+                    Text(contest.title).font(.footnote.weight(.semibold)).lineLimit(2)
+                }
                 Spacer(minLength: 0)
                 Countdown(date: contest.date).font(.caption)
             } else {
@@ -147,7 +125,7 @@ private struct MediumView: View {
     let contests: [WidgetContest]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "trophy.fill").foregroundStyle(.yellow)
                 Text("Upcoming contests").font(.caption.weight(.semibold))

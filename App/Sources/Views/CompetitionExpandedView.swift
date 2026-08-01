@@ -1,0 +1,88 @@
+import CompHuntKit
+import SwiftUI
+
+/// The tail of an expanded row: everything the collapsed row does not already
+/// say. Rendered inside the List, so there is no ScrollView here and no
+/// repeated title - the row above stays visible as the heading.
+struct CompetitionExpandedView: View {
+    let competition: Competition
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text(competition.category.shortLabel)
+                    .foregroundStyle(competition.category.tint)
+                if competition.region == .vietnam {
+                    Text("Vietnam").foregroundStyle(.red)
+                }
+                Text("via \(competition.source)")
+                    .foregroundStyle(.secondary)
+                if let issueID = competition.trackedIssueID {
+                    Text("tracked \(issueID)")
+                        .foregroundStyle(.green)
+                }
+                Spacer()
+                Menu {
+                    CompetitionActionsMenu(competition: competition)
+                } label: {
+                    Label("Actions", systemImage: "ellipsis.circle")
+                        .labelStyle(.iconOnly)
+                }
+                #if os(macOS)
+                .menuStyle(.borderlessButton)
+                #endif
+                .fixedSize()
+            }
+            .font(.caption2)
+
+            Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
+                if !competition.organizer.isEmpty {
+                    detailRow("Organizer", competition.organizer)
+                }
+                if !competition.location.isEmpty {
+                    detailRow("Location", competition.location)
+                }
+                if let deadline = competition.registrationDeadline {
+                    detailRow("Deadline", deadline.formatted(date: .abbreviated, time: .shortened))
+                }
+                if let start = competition.startDate {
+                    detailRow("Starts", start.formatted(date: .abbreviated, time: .shortened))
+                }
+                if let end = competition.endDate {
+                    detailRow("Ends", end.formatted(date: .abbreviated, time: .shortened))
+                }
+                if !competition.prize.isEmpty {
+                    detailRow("Prize", competition.prize)
+                }
+                detailRow("First seen", competition.firstSeen.formatted(date: .abbreviated, time: .shortened))
+            }
+
+            if let url = URL(string: competition.url) {
+                Link(destination: url) {
+                    Label("Open competition page", systemImage: "safari")
+                        .font(.footnote)
+                }
+            }
+
+            if !competition.details.isEmpty {
+                Text(competition.details)
+                    .font(.footnote)
+                    .textSelection(.enabled)
+            }
+        }
+        .padding(.leading, 14)
+        .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private func detailRow(_ label: String, _ value: String) -> some View {
+        GridRow {
+            Text(label)
+                .foregroundStyle(.secondary)
+                .gridColumnAlignment(.trailing)
+            Text(value)
+                .textSelection(.enabled)
+        }
+        .font(.footnote)
+    }
+}

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- iOS apps are always sandboxed and network-capable, so the only grant
+	     needed is the App Group the widget reads its snapshot from. iOS uses the
+	     bare `group.` form (AppGroup.swift branches per platform); the macOS
+	     targets keep the team-prefixed form in CompHunt.entitlements. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.nhannht.ncomphunt</string>
+	</array>
+</dict>
+</plist>

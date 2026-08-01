@@ -9,22 +9,40 @@ import SwiftUI
 struct CompetitionActionsMenu: View {
     let competition: Competition
 
+    @Environment(\.openURL) private var openURL
+    @Environment(AppModel.self) private var model
+
     var body: some View {
         if let url = URL(string: competition.url) {
             Button("Open Competition Page", systemImage: "safari") {
-                NSWorkspace.shared.open(url)
+                openURL(url)
             }
             ShareLink(item: url, subject: Text(competition.title)) {
                 Label("Share", systemImage: "square.and.arrow.up")
             }
             Button("Copy Link", systemImage: "link") {
+                #if os(macOS)
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(competition.url, forType: .string)
+                #else
+                UIPasteboard.general.string = competition.url
+                #endif
             }
         }
         if competition.nextRelevantDate != nil {
             Button("Add to Calendar", systemImage: "calendar.badge.plus") {
                 CompetitionActions.addToCalendar(competition)
+            }
+            // Muting frees its slots in the reminder window, so the next
+            // competition in line takes them.
+            if model.isReminderMuted(competition) {
+                Button("Unmute Reminders", systemImage: "bell") {
+                    model.setReminderMuted(false, for: competition)
+                }
+            } else {
+                Button("Mute Reminders", systemImage: "bell.slash") {
+                    model.setReminderMuted(true, for: competition)
+                }
             }
         }
         Divider()
@@ -34,6 +52,7 @@ struct CompetitionActionsMenu: View {
 
 @MainActor
 enum CompetitionActions {
+    #if os(macOS)
     /// Hands the competition to Calendar as an .ics import: no EventKit
     /// permission prompt, and the user confirms inside Calendar itself.
     static func addToCalendar(_ competition: Competition) {
@@ -55,6 +74,15 @@ enum CompetitionActions {
                           body: error.localizedDescription)
         }
     }
+    #else
+    /// Stages the competition for the system event-edit sheet MainWindow
+    /// presents (EventKitUI, no calendar permission needed since iOS 17). The
+    /// event shape comes from the same `CalendarEventPlan` the .ics path uses,
+    /// so the two platforms never diverge.
+    static func addToCalendar(_ competition: Competition) {
+        EventEditRequest.shared.competition = competition
+    }
+    #endif
 }
 
 /// Small menu item that files the competition into the YouTrack COMP project,
@@ -64,6 +92,7 @@ struct YouTrackMenuItem: View {
     let competition: Competition
 
     @Environment(\.modelContext) private var context
+    @Environment(\.openURL) private var openURL
 
     /// Re-created per access so a YouTrack config saved in Settings applies
     /// without a relaunch; the failable init only reads the stored config.
@@ -73,7 +102,7 @@ struct YouTrackMenuItem: View {
         if let issueID = competition.trackedIssueID {
             if let url = Self.client?.issueURL(issueID) {
                 Button("Open \(issueID) in YouTrack", systemImage: "checkmark.circle") {
-                    NSWorkspace.shared.open(url)
+                    openURL(url)
                 }
             }
         } else if let client = Self.client {

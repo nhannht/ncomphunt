@@ -1,16 +1,15 @@
+#if os(macOS)
 import AppKit
+#endif
 import CompHuntKit
 import SwiftData
 import SwiftUI
 
 /// The whole app, minus the `@main` attribute.
 ///
-/// Split out from `CompHuntApp` so a build that ships the paid module can
-/// substitute its own entry point - registering capabilities into `ProRegistry`
-/// before the first scene renders - and still present exactly this. Everything
-/// the two builds share lives here; the entry point files hold nothing but
-/// `@main` and one line of body. Keep it that way: anything added to an entry
-/// point has to be written twice and will drift.
+/// Split out from `CompHuntApp` so the entry point holds nothing but `@main`
+/// and one line of body. Keep it that way: an entry point that accretes logic
+/// is the file nobody thinks to look in.
 struct CompHuntRoot: Scene {
     @State private var model = AppModel()
 
@@ -24,11 +23,24 @@ struct CompHuntRoot: Scene {
                 .environment(model)
                 .onOpenURL { url in
                     model.handleDeepLink(url)
+                    #if os(macOS)
                     NSApp.activate(ignoringOtherApps: true)
+                    #endif
                 }
+                #if os(iOS)
+                // Background refresh stands in for the always-running macOS
+                // auto-refresh timer.
+                .backgroundRefreshScheduling()
+                #endif
         }
         .modelContainer(model.container)
+        #if os(iOS)
+        .backgroundTask(.appRefresh(BackgroundRefresh.taskID)) {
+            await BackgroundRefresh.perform(model: model)
+        }
+        #endif
 
+        #if os(macOS)
         MenuBarExtra {
             MenuBarView()
                 .environment(model)
@@ -41,5 +53,6 @@ struct CompHuntRoot: Scene {
             SettingsView()
                 .environment(model)
         }
+        #endif
     }
 }

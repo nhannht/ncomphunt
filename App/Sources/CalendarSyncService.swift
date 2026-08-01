@@ -32,15 +32,22 @@ final class CalendarSyncService {
         EKEventStore.authorizationStatus(for: .event)
     }
 
+    /// Where the user re-grants calendar access, in the platform's own wording.
+    #if os(macOS)
+    private static let accessSettingsPath = "System Settings > Privacy & Security > Calendars"
+    #else
+    private static let accessSettingsPath = "Settings > Apps > nCompHunt > Calendars"
+    #endif
+
     /// One-line, user-facing status for the Settings row.
     var statusText: String {
         switch authorization {
         case .fullAccess:
             return isEnabled ? "Syncing deadlines to the nCompHunt calendar" : "Off"
         case .writeOnly:
-            return "Limited access granted; full access is needed. Enable it in System Settings > Privacy & Security > Calendars."
+            return "Limited access granted; full access is needed. Enable it in \(Self.accessSettingsPath)."
         case .denied, .restricted:
-            return "Calendar access denied. Enable it in System Settings > Privacy & Security > Calendars."
+            return "Calendar access denied. Enable it in \(Self.accessSettingsPath)."
         case .notDetermined:
             return "Off"
         @unknown default:

@@ -1,4 +1,6 @@
+#if os(macOS)
 import AppKit
+#endif
 import CompHuntKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -19,9 +21,21 @@ struct SettingsView: View {
     @State private var configRevision = 0
     @State private var apiKeysNotice: String?
     @State private var youtrackNotice: String?
+    /// The OS permission line. Read asynchronously because
+    /// `notificationSettings()` is async, and shown because a denial is
+    /// otherwise completely invisible - nothing throws when it happens.
+    @State private var notificationStatus = "Checking..."
+    #if os(iOS)
+    @State private var importerPresented = false
+    #endif
 
     private var youTrackConfigured: Bool {
         SecretsReader.youTrackConfig() != nil
+    }
+
+    private func loadNotificationStatus() async {
+        notificationStatus = await Notifier.authorizationStatusText()
+        model.loadReminderStatus()
     }
 
     var body: some View {
@@ -43,7 +57,13 @@ struct SettingsView: View {
                 SecureField("Google CSE engine id (cx)", text: $googleCX)
                 HStack {
                     Button("Save") { saveAPIKeys() }
-                    Button("Import from secrets.yml...") { importSecrets() }
+                    Button("Import from secrets.yml...") {
+                        #if os(macOS)
+                        importSecrets()
+                        #else
+                        importerPresented = true
+                        #endif
+                    }
                     if let apiKeysNotice {
                         Text(apiKeysNotice)
                             .font(.caption)
@@ -51,7 +71,7 @@ struct SettingsView: View {
                     }
                     Spacer()
                 }
-                Text("Keys are stored in your macOS Keychain. Clear a field and Save to remove it.")
+                Text("Keys are stored in your \(keychainName). Clear a field and Save to remove it.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -88,7 +108,9 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                #if os(macOS)
                 .toggleStyle(.checkbox)
+                #endif
                 if model.calendarSyncEnabled {
                     Button("Remove nCompHunt calendar", role: .destructive) {
                         model.removeCalendar()
@@ -98,6 +120,32 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section("Notifications") {
+                Toggle(isOn: Binding(
+                    get: { model.remindersEnabled },
+                    set: { model.setRemindersEnabled($0) })
+                ) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Remind me before deadlines")
+                        Text(notificationStatus)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                #if os(macOS)
+                .toggleStyle(.checkbox)
+                #endif
+                if model.remindersEnabled {
+                    // Stated plainly because the schedule IS capped: a
+                    // truncated set must never read as a complete one.
+                    LabeledContent("Scheduled now",
+                                   value: "\(model.scheduledReminderCount) of \(ReminderPlan.defaultLimit)")
+                }
+                Text("Two reminders per competition, one day and one hour before its deadline, for the soonest \(ReminderPlan.defaultLimit) reminders. These fire whether or not the app is running. Mute any competition from its actions menu and the next one takes its place.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .task { await loadNotificationStatus() }
             Section("Refresh") {
                 LabeledContent("Interval", value: "On launch, then every 3 hours")
                 if let last = model.lastRefresh {
@@ -107,7 +155,25 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520)
+        #if os(macOS)
+        .frame(width: 460)
+        .controlSize(.small)
+        #else
+        // API keys, engine ids, and URLs: never autocapitalize or "correct".
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled()
+        .fileImporter(
+            isPresented: $importerPresented,
+            allowedContentTypes: [.yaml, .plainText]
+        ) { result in
+            guard case .success(let url) = result else { return }
+            let count = SecretsImporter.importSecretsYAML(
+                at: url, into: KeychainCredentialStore.shared)
+            loadCredentials()
+            configRevision += 1
+            apiKeysNotice = "Imported \(count) key\(count == 1 ? "" : "s")"
+        }
+        #endif
         .onAppear { loadCredentials() }
         .task(id: apiKeysNotice) {
             guard apiKeysNotice != nil else { return }
@@ -119,6 +185,14 @@ struct SettingsView: View {
             try? await Task.sleep(for: .seconds(2.5))
             youtrackNotice = nil
         }
+    }
+
+    private var keychainName: String {
+        #if os(macOS)
+        "macOS Keychain"
+        #else
+        "Keychain"
+        #endif
     }
 
     private func lastResult(for id: SourceID) -> RefreshReport.SourceResult? {
@@ -163,6 +237,7 @@ struct SettingsView: View {
         store.set(trimmed.isEmpty ? nil : trimmed, for: key)
     }
 
+    #if os(macOS)
     private func importSecrets() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -186,6 +261,7 @@ struct SettingsView: View {
         guard let pw = getpwuid(getuid()) else { return nil }
         return URL(fileURLWithPath: String(cString: pw.pointee.pw_dir))
     }
+    #endif
 }
 
 /// One row per source: checkbox + a one-line status that tells the whole
@@ -211,7 +287,9 @@ private struct SourceToggleRow: View {
                     .lineLimit(2)
             }
         }
+        #if os(macOS)
         .toggleStyle(.checkbox)
+        #endif
     }
 
     @ViewBuilder

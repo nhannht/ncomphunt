@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Partial Info.plist for the iOS target: GENERATE_INFOPLIST_FILE merges
+	     the standard keys on top. Same ncomphunt:// scheme and calendar usage
+	     string as the macOS plist, plus the iOS-only background-refresh task id
+	     and the modern (storyboard-free) launch screen. -->
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>nCompHunt adds upcoming competition deadlines to its own calendar, so a CTF starting next Saturday shows up next to the rest of your week. Full access lets it update or remove those events when a contest is rescheduled or cancelled. It does not use the events in your other calendars.</string>
+	<!-- HTTPS-only networking: exempt from export compliance, pre-answers the
+	     App Store Connect encryption question per upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.nhannht.ncomphunt</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>ncomphunt</string>
+			</array>
+		</dict>
+	</array>
+	<!-- BGAppRefreshTask id BackgroundRefresh.swift registers and schedules. -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.nhannht.ncomphunt.refresh</string>
+	</array>
+	<key>UILaunchScreen</key>
+	<dict/>
+</dict>
+</plist>

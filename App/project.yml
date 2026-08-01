@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.nhannht
   deploymentTarget:
     macOS: "26.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 
 packages:
@@ -52,6 +53,40 @@ targetTemplates:
           DEVELOPMENT_TEAM: V3P5U9Z68M
           ENABLE_HARDENED_RUNTIME: YES
 
+  # The iOS twin of AppBase: same bundle id and versions (universal purchase on
+  # the existing App Store record), automatic signing (iOS always provisions, so
+  # the macOS Developer ID / hardened-runtime config split has no equivalent).
+  # A template for the same reason AppBase is one: a future Pro iOS entry point
+  # builds from this seam instead of a drifting copy.
+  AppBaseiOS:
+    type: application
+    platform: iOS
+    dependencies:
+      - package: CompHuntKit
+      - target: CompHuntWidgetiOS
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.ncomphunt
+        PRODUCT_NAME: nCompHunt
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "6"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        # Partial plist merged with the generated keys: URL scheme, calendar
+        # usage string, background-refresh task id, launch screen.
+        INFOPLIST_FILE: CompHunt-iOS-Info.plist
+        # iOS App Group uses the bare `group.` form (AppGroup.swift branches).
+        CODE_SIGN_ENTITLEMENTS: CompHunt-iOS.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Nguyen Huu Thien Nhan. MIT License."
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: V3P5U9Z68M
+
 targets:
   CompHunt:
     templates: [AppBase]
@@ -89,3 +124,37 @@ targets:
           CODE_SIGN_IDENTITY: "Developer ID Application"
           DEVELOPMENT_TEAM: V3P5U9Z68M
           ENABLE_HARDENED_RUNTIME: YES
+
+  CompHuntiOS:
+    templates: [AppBaseiOS]
+    sources:
+      # Same app sources as macOS minus the menu-bar surface, which has no iOS
+      # equivalent (the countdown data lives on in the widget).
+      - path: Sources
+        excludes:
+          - "Views/MenuBarView.swift"
+          - "Views/MenuBarLabel.swift"
+
+  CompHuntWidgetiOS:
+    type: app-extension
+    platform: iOS
+    sources:
+      - Widget
+    dependencies:
+      - package: CompHuntKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nhannht.ncomphunt.widget
+        PRODUCT_NAME: CompHuntWidget
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "6"
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        # Same platform-neutral partial plist as the macOS widget target
+        # (NSExtensionPointIdentifier only).
+        INFOPLIST_FILE: Widget/CompHuntWidget-Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: nCompHunt
+        INFOPLIST_KEY_NSHumanReadableCopyright: "Copyright (c) 2026 Nguyen Huu Thien Nhan. MIT License."
+        CODE_SIGN_ENTITLEMENTS: Widget/CompHuntWidget-iOS.entitlements
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: V3P5U9Z68M

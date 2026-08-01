@@ -6,114 +6,84 @@ struct CompetitionRow: View {
 
     /// A finished competition still appears when it answers a search, so the
     /// row has to say so unmistakably. Greyed AND labelled, not one or the
-    /// other: colour alone is not a message everyone can read.
+    /// other: colour alone is not a message everyone can read. The label is
+    /// the whenLine's "ended ..." text plus the Ended section header.
     private var hasEnded: Bool { !competition.isCurrent() }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
-                Text(competition.title)
-                    .font(.headline)
-                    .lineLimit(1)
-                if hasEnded {
-                    Text("ENDED")
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(.quaternary, in: Capsule())
-                        .foregroundStyle(.secondary)
-                } else if competition.isNew() {
-                    Text("NEW")
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(.tint, in: Capsule())
-                        .foregroundStyle(.white)
+        HStack(alignment: .top, spacing: 8) {
+            CategoryDot(competition.category)
+                .padding(.top, 5)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 6) {
+                    Text(competition.title)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                    if !hasEnded, competition.isNew() {
+                        Text("new")
+                            .font(.caption2)
+                            .foregroundStyle(.tint)
+                    }
                 }
+                HStack(spacing: 4) {
+                    Text(competition.category.shortLabel)
+                        .foregroundStyle(competition.category.tint)
+                    if competition.region == .vietnam {
+                        Text("VN")
+                            .foregroundStyle(.red)
+                    }
+                }
+                .font(.caption2)
             }
-            HStack(spacing: 6) {
-                CategoryChip(category: competition.category)
-                if competition.region == .vietnam {
-                    Text("VN")
-                        .font(.caption2.bold())
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(.red.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.red)
-                }
-                Text(dateLine)
-                    .font(.caption)
+            Spacer(minLength: 12)
+            // Mail-style trailing meta: the date and prize hug the row's right
+            // edge, so the space between title and date reads as layout, not
+            // as a void trailing every line.
+            VStack(alignment: .trailing, spacing: 1) {
+                Text(competition.whenLine)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 if !competition.prize.isEmpty {
                     Text(competition.prize)
-                        .font(.caption)
                         .foregroundStyle(.green)
                         .lineLimit(1)
                 }
             }
+            .font(.caption2)
+            .padding(.top, 3)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 1)
         .opacity(hasEnded ? 0.55 : 1)
-    }
-
-    private var dateLine: String {
-        let now = Date.now
-        if hasEnded {
-            // Say when it closed rather than falling through to the source
-            // name, which reads as though the row simply has no dates.
-            if let end = competition.endDate {
-                return "ended \(end.formatted(.relative(presentation: .named)))"
-            }
-            if let deadline = competition.registrationDeadline {
-                return "closed \(deadline.formatted(.relative(presentation: .named)))"
-            }
-            return competition.source
-        }
-        if let deadline = competition.registrationDeadline {
-            return "due \(deadline.formatted(.relative(presentation: .named)))"
-        }
-        if let start = competition.startDate, start > now {
-            return "starts \(start.formatted(.relative(presentation: .named)))"
-        }
-        if let end = competition.endDate, end > now {
-            return "ends \(end.formatted(.relative(presentation: .named)))"
-        }
-        return competition.source
     }
 }
 
-struct CategoryChip: View {
-    let category: CompetitionCategory
-
-    var body: some View {
-        Text(shortName)
-            .font(.caption2.bold())
-            .padding(.horizontal, 4)
-            .padding(.vertical, 1)
-            .background(color.opacity(0.15), in: Capsule())
-            .foregroundStyle(color)
-    }
-
-    private var shortName: String {
-        switch category {
-        case .cp: "CP"
-        case .ctf: "CTF"
-        case .ai: "AI"
-        case .hackathon: "HACK"
-        case .design: "DESIGN"
-        case .other: "OTHER"
+extension Competition {
+    /// One relative phrase for "when does this matter": the deadline first,
+    /// then start, then end - or when it closed, for a finished competition.
+    /// Shared by the list row and the table's When column so the two styles
+    /// can never phrase the same date differently.
+    var whenLine: String {
+        let now = Date.now
+        if !isCurrent(asOf: now) {
+            // Say when it closed rather than falling through to the source
+            // name, which reads as though the row simply has no dates.
+            if let end = endDate {
+                return "ended \(end.formatted(.relative(presentation: .named)))"
+            }
+            if let deadline = registrationDeadline {
+                return "closed \(deadline.formatted(.relative(presentation: .named)))"
+            }
+            return source
         }
-    }
-
-    private var color: Color {
-        switch category {
-        case .cp: .blue
-        case .ctf: .purple
-        case .ai: .orange
-        case .hackathon: .teal
-        case .design: .pink
-        case .other: .gray
+        if let deadline = registrationDeadline {
+            return "due \(deadline.formatted(.relative(presentation: .named)))"
         }
+        if let start = startDate, start > now {
+            return "starts \(start.formatted(.relative(presentation: .named)))"
+        }
+        if let end = endDate, end > now {
+            return "ends \(end.formatted(.relative(presentation: .named)))"
+        }
+        return source
     }
 }

@@ -1,10 +1,26 @@
+#if os(macOS)
 import CompHuntKit
 import SwiftUI
 
-struct CompetitionDetailView: View {
-    let competition: Competition
+/// The right-hand pane of the desktop split, and the table style's inspector:
+/// the full record for the selected competition. The content column is capped
+/// and centered so an ultra-wide pane reads as an intentional card rather
+/// than a strip cramped against the divider.
+struct CompetitionDetailPane: View {
+    let competition: Competition?
 
     var body: some View {
+        if let competition {
+            detail(competition)
+        } else {
+            ContentUnavailableView(
+                "Select a competition",
+                systemImage: "trophy",
+                description: Text("Details appear here."))
+        }
+    }
+
+    private func detail(_ competition: Competition) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
@@ -22,19 +38,20 @@ struct CompetitionDetailView: View {
                         .fixedSize()
                     }
                     HStack(spacing: 6) {
-                        CategoryChip(category: competition.category)
+                        CategoryDot(competition.category)
+                        Text(competition.category.shortLabel)
+                            .foregroundStyle(competition.category.tint)
                         if competition.region == .vietnam {
-                            Text("Vietnam").font(.caption).foregroundStyle(.red)
+                            Text("Vietnam").foregroundStyle(.red)
                         }
                         Text("via \(competition.source)")
-                            .font(.caption)
                             .foregroundStyle(.secondary)
                         if let issueID = competition.trackedIssueID {
                             Text("tracked \(issueID)")
-                                .font(.caption)
                                 .foregroundStyle(.green)
                         }
                     }
+                    .font(.caption)
                 }
 
                 if let url = URL(string: competition.url) {
@@ -71,11 +88,10 @@ struct CompetitionDetailView: View {
                         .font(.body)
                         .textSelection(.enabled)
                 }
-
-                Spacer()
             }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
+            .frame(maxWidth: 680, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -91,3 +107,4 @@ struct CompetitionDetailView: View {
         .font(.callout)
     }
 }
+#endif
