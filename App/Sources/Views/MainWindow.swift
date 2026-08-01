@@ -28,9 +28,14 @@ struct MainWindow: View {
 
     @State private var isResolving = false
     @State private var queryMessage: String?
+    #if os(macOS)
+    @Environment(\.openWindow) private var openWindow
+    #endif
     #if os(iOS)
     /// iOS has no Settings scene; the gear button presents the same form.
     @State private var settingsPresented = false
+    /// Nor a second window, so the dashboard is a sheet here.
+    @State private var dashboardPresented = false
     #endif
 
     private var query: SearchQuery { SearchQuery.parse(queryText) }
@@ -95,6 +100,15 @@ struct MainWindow: View {
                 // the middle of the title bar with uneven gaps either side.
                 // Buttons that belong together have to be declared together.
                 ToolbarItemGroup(placement: .primaryAction) {
+                    Button("Dashboard", systemImage: "chart.bar") {
+                        #if os(macOS)
+                        openWindow(id: CompHuntRoot.dashboardWindowID)
+                        #else
+                        dashboardPresented = true
+                        #endif
+                    }
+                    .help("See the shape of your list and your pipeline")
+
                     Menu {
                         Picker("Sort by", selection: $sort) {
                             ForEach(ListSort.allCases) { Text($0.label).tag($0) }
@@ -157,6 +171,18 @@ struct MainWindow: View {
                     .toolbar {
                         ToolbarItem(placement: .confirmationAction) {
                             Button("Done") { settingsPresented = false }
+                        }
+                    }
+            }
+        }
+        .sheet(isPresented: $dashboardPresented) {
+            NavigationStack {
+                DashboardView()
+                    .environment(model)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { dashboardPresented = false }
                         }
                     }
             }

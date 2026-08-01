@@ -13,6 +13,10 @@ import SwiftUI
 struct CompHuntRoot: Scene {
     @State private var model = AppModel()
 
+    #if os(macOS)
+    static let dashboardWindowID = "dashboard"
+    #endif
+
     init() {
         Notifier.requestAuthorization()
     }
@@ -41,6 +45,17 @@ struct CompHuntRoot: Scene {
         #endif
 
         #if os(macOS)
+        // Its own window, following Settings: the dashboard is about the whole
+        // store, not about whatever the main window is filtered to, so it must
+        // not live inside that window's layout toggle.
+        Window("Dashboard", id: CompHuntRoot.dashboardWindowID) {
+            DashboardView()
+                .environment(model)
+                .frame(minWidth: 420, minHeight: 480)
+        }
+        .modelContainer(model.container)
+        .defaultSize(width: 620, height: 720)
+
         MenuBarExtra {
             MenuBarView()
                 .environment(model)
