@@ -29,16 +29,6 @@ enum Notifier {
         }
     }
 
-    static func postNewCompetitions(_ titles: [String], keys: [String] = []) {
-        let title = titles.count == 1
-            ? "New competition found"
-            : "\(titles.count) new competitions found"
-        // A single new competition can open straight to its row; several have
-        // no one destination, so the tap just brings the app forward.
-        post(title, body: titles.prefix(3).joined(separator: "\n"),
-             key: titles.count == 1 ? keys.first : nil)
-    }
-
     /// One-off notification, used for action outcomes (menus are transient,
     /// so filing results cannot surface inline).
     ///
@@ -60,48 +50,89 @@ enum Notifier {
         }
     }
 
-    /// Schedule the reminder set, replacing whatever was pending.
+    /// One scheduled post, whichever planner produced it.
+    ///
+    /// The two paths differ in what they are ABOUT - a deadline versus a
+    /// morning - not in how they are delivered, so they meet here and nowhere
+    /// else. `key` is nil for a digest, which is about the whole list and has
+    /// no single competition to open.
+    struct Scheduled {
+        let id: String
+        let title: String
+        let body: String
+        let fireDate: Date
+        let key: String?
+    }
+
+    /// Schedule deadline reminders for the marked competitions.
+    static func replaceReminders(with plans: [ReminderPlan]) async {
+        await replace(prefix: ReminderPlan.identifierPrefix, with: plans.map {
+            Scheduled(id: $0.id, title: $0.title, body: $0.body,
+                      fireDate: $0.fireDate, key: $0.key)
+        })
+    }
+
+    /// Schedule the morning digests.
+    static func replaceDigests(with plans: [DigestPlan]) async {
+        await replace(prefix: DigestPlan.identifierPrefix, with: plans.map {
+            Scheduled(id: $0.id, title: $0.title, body: $0.body,
+                      fireDate: $0.fireDate, key: nil)
+        })
+    }
+
+    static func cancelAllReminders() async {
+        await replace(prefix: ReminderPlan.identifierPrefix, with: [])
+    }
+
+    static func cancelAllDigests() async {
+        await replace(prefix: DigestPlan.identifierPrefix, with: [])
+    }
+
+    static func pendingReminderCount() async -> Int {
+        await pendingCount(prefix: ReminderPlan.identifierPrefix)
+    }
+
+    static func pendingDigestCount() async -> Int {
+        await pendingCount(prefix: DigestPlan.identifierPrefix)
+    }
+
+    /// Replace everything under one prefix, leaving the other prefix untouched.
     ///
     /// A full replace rather than a diff: the caller only reaches here when the
-    /// desired set actually changed, and identifiers are derived from
-    /// (competition, lead time), so re-adding an unchanged reminder is a no-op
-    /// overwrite rather than a duplicate.
-    static func replaceReminders(with plans: [ReminderPlan]) async {
+    /// desired set actually changed, and identifiers are derived from what the
+    /// post is about, so re-adding an unchanged one is a no-op overwrite rather
+    /// than a duplicate. Scoping by prefix is what keeps the reminder and digest
+    /// paths from clearing each other.
+    private static func replace(prefix: String, with items: [Scheduled]) async {
         let center = UNUserNotificationCenter.current()
         let stale = await center.pendingNotificationRequests()
             .map(\.identifier)
-            .filter { $0.hasPrefix(ReminderPlan.identifierPrefix) }
+            .filter { $0.hasPrefix(prefix) }
         center.removePendingNotificationRequests(withIdentifiers: stale)
 
-        for plan in plans {
+        for item in items {
             let content = UNMutableNotificationContent()
-            content.title = plan.title
-            content.body = plan.body
+            content.title = item.title
+            if !item.body.isEmpty { content.body = item.body }
             content.sound = .default
-            content.userInfo[NotificationDelegate.keyField] = plan.key
+            if let key = item.key {
+                content.userInfo[NotificationDelegate.keyField] = key
+            }
             let components = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute, .second], from: plan.fireDate)
+                [.year, .month, .day, .hour, .minute, .second], from: item.fireDate)
             // Calendar-triggered, so the system fires it whether or not the app
-            // is running. This is the whole reason reminders are reliable where
+            // is running. This is the whole reason these are reliable where
             // refresh-driven notifications are not.
             let trigger = UNCalendarNotificationTrigger(
                 dateMatching: components, repeats: false)
             await submit(UNNotificationRequest(
-                identifier: plan.id, content: content, trigger: trigger))
+                identifier: item.id, content: content, trigger: trigger))
         }
     }
 
-    static func cancelAllReminders() async {
-        let center = UNUserNotificationCenter.current()
-        let ours = await center.pendingNotificationRequests()
-            .map(\.identifier)
-            .filter { $0.hasPrefix(ReminderPlan.identifierPrefix) }
-        center.removePendingNotificationRequests(withIdentifiers: ours)
-    }
-
-    static func pendingReminderCount() async -> Int {
+    private static func pendingCount(prefix: String) async -> Int {
         await UNUserNotificationCenter.current().pendingNotificationRequests()
-            .count { $0.identifier.hasPrefix(ReminderPlan.identifierPrefix) }
+            .count { $0.identifier.hasPrefix(prefix) }
     }
 
     private static func submit(_ request: UNNotificationRequest) async {

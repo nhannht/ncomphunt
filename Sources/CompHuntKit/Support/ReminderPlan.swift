@@ -28,39 +28,49 @@ public struct ReminderPlan: Sendable, Equatable, Identifiable {
     /// every extra lead time spends the notification budget below twice over.
     public static let defaultLeadTimes: [TimeInterval] = [24 * 3600, 3600]
 
-    /// How many reminders may be pending at once.
+    /// A ceiling, not a budget the person spends.
     ///
     /// iOS keeps only the 64 soonest-firing pending requests per app and
-    /// silently discards the rest, so this is a correctness constraint, not a
-    /// preference. 48 leaves headroom under that ceiling for the immediate
-    /// posts (new competitions, action outcomes) that share the same app.
+    /// silently discards the rest, so a cap has to exist. It is no longer a
+    /// scarce resource competitions compete for: only marked ones schedule at
+    /// all, and nobody marks 24 things. It exists so that if someone does, the
+    /// app truncates deliberately instead of letting the OS drop requests
+    /// silently, and Settings says so when it bites.
     public static let defaultLimit = 48
 
-    /// The reminders that should be pending right now: every upcoming
-    /// competition, soonest first, until the budget is full.
+    /// The reminders that should be pending right now: every MARKED competition
+    /// with a future deadline, soonest first.
+    ///
+    /// Marking is the entire subscription model. Before this, every upcoming
+    /// competition was subscribed and people muted what they did not want -
+    /// which meant the app interrupted about 282 things nobody asked about, and
+    /// "quiet" was a chore you performed one row at a time. Opting in inverts
+    /// that: silence is the default and a mark is a request to be told.
+    ///
+    /// `done` and `dropped` keep their mark but stop scheduling, via
+    /// `wantsReminders`. A pipeline that kept notifying about finished things
+    /// would get noisier the more it was used.
     ///
     /// Deliberately NOT scoped by the list's category/region lens. A lens is a
     /// transient browsing state and a reminder is a commitment; scoping one by
     /// the other means tapping a chip silently cancels reminders the person was
-    /// relying on. The budget is the only scope, and muting a competition lets
-    /// the next one roll into the window.
+    /// relying on.
     ///
     /// Self-healing by construction: the whole set is re-derived from scratch
-    /// on every refresh, so competitions enter the window as nearer deadlines
-    /// pass. Scheduling something six months out early buys nothing - its
-    /// reminder fires six months from now either way.
+    /// on every refresh, so a newly marked competition joins immediately and an
+    /// unmarked one drops out.
     public static func plans(
         for competitions: [Competition],
-        muted: Set<String> = [],
         leadTimes: [TimeInterval] = defaultLeadTimes,
         limit: Int = defaultLimit,
         now: Date = .now
     ) -> [ReminderPlan] {
         let upcoming = upcomingContests(
-            in: competitions, category: nil, region: nil, now: now)
+            in: competitions.filter(\.wantsReminders),
+            category: nil, region: nil, now: now)
 
         var plans: [ReminderPlan] = []
-        for competition in upcoming where !muted.contains(competition.key) {
+        for competition in upcoming {
             guard let target = competition.nextRelevantDate else { continue }
             for lead in leadTimes {
                 let fireDate = target.addingTimeInterval(-lead)
@@ -77,8 +87,8 @@ public struct ReminderPlan: Sendable, Equatable, Identifiable {
             }
         }
 
-        // Soonest first, then truncate: the budget must go to the reminders
-        // that fire next, whichever competition they belong to.
+        // Soonest first, then truncate: if the ceiling is ever reached, it is
+        // the nearest deadlines that survive.
         return Array(plans.sorted { $0.fireDate < $1.fireDate }.prefix(limit))
     }
 

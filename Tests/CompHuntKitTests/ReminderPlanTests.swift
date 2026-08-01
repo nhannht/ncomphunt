@@ -6,19 +6,26 @@ import Testing
 @Suite struct ReminderPlanTests {
     private let now = Date(timeIntervalSince1970: 1_780_000_000)
 
+    /// Marked by default, because only a marked competition schedules anything
+    /// and the tests below are about lead times, the ceiling, and body copy -
+    /// marking is their precondition, not their subject. What marking itself
+    /// decides is tested in "what earns a reminder".
     private func competition(
         title: String = "Sample Contest",
         url: String = "https://example.com/contest",
         prize: String = "",
         startDate: Date? = nil,
         endDate: Date? = nil,
-        registrationDeadline: Date? = nil
+        registrationDeadline: Date? = nil,
+        status: CompetitionStatus? = .interested
     ) -> Competition {
         let dto = CompetitionDTO(
             source: "fake", title: title, organizer: "", url: url,
             location: "", prize: prize, startDate: startDate, endDate: endDate,
             registrationDeadline: registrationDeadline)
-        return Competition(dto: dto, category: .other, region: .global, now: now)
+        let row = Competition(dto: dto, category: .other, region: .global, now: now)
+        row.status = status
+        return row
     }
 
     /// `hours` from the frozen `now`.
@@ -62,23 +69,62 @@ import Testing
         #expect(ReminderPlan.plans(for: [ended], now: now).isEmpty)
     }
 
-    @Test func mutedKeyIsExcluded() {
-        let kept = competition(
-            title: "Kept", url: "https://example.com/a",
-            registrationDeadline: ahead(72))
-        let muted = competition(
-            title: "Muted", url: "https://example.com/b",
-            registrationDeadline: ahead(72))
-        let plans = ReminderPlan.plans(
-            for: [kept, muted], muted: [muted.key], now: now)
-        #expect(plans.allSatisfy { $0.key == kept.key })
+    /// The whole subscription model in one test. Silence is the default; a mark
+    /// is a request to be told. This replaces the retired opt-out pair
+    /// (`mutedKeyIsExcluded`, `mutingLetsTheNextCompetitionRollIn`), which
+    /// asserted the opposite - that everything was subscribed until muted.
+    @Test func onlyMarkedCompetitionsAreScheduled() {
+        let marked = competition(
+            title: "Marked", url: "https://example.com/a",
+            registrationDeadline: ahead(72), status: .interested)
+        let unmarked = competition(
+            title: "Unmarked", url: "https://example.com/b",
+            registrationDeadline: ahead(72), status: nil)
+        let plans = ReminderPlan.plans(for: [marked, unmarked], now: now)
         #expect(plans.count == 2)
+        #expect(plans.allSatisfy { $0.key == marked.key })
     }
 
-    // MARK: the budget
+    @Test func aListWithNothingMarkedSchedulesNothingAtAll() {
+        let rows = (1...20).map { index in
+            competition(title: "Contest \(index)",
+                        url: "https://example.com/\(index)",
+                        registrationDeadline: ahead(48 + Double(index)),
+                        status: nil)
+        }
+        #expect(ReminderPlan.plans(for: rows, now: now).isEmpty)
+    }
 
-    /// The cap is on notifications, not competitions, and it must go to the
-    /// reminders that fire NEXT - whichever competition they belong to.
+    /// A pipeline that kept notifying about finished competitions would get
+    /// noisier the more it was used, so the terminal states keep the mark and
+    /// drop the reminders.
+    @Test func finishedAndAbandonedStatesKeepTheMarkButStopScheduling() {
+        for status in [CompetitionStatus.done, .dropped] {
+            let row = competition(registrationDeadline: ahead(72), status: status)
+            #expect(row.isMarked)
+            #expect(ReminderPlan.plans(for: [row], now: now).isEmpty)
+        }
+        for status in [CompetitionStatus.interested, .applied, .joined] {
+            let row = competition(registrationDeadline: ahead(72), status: status)
+            #expect(ReminderPlan.plans(for: [row], now: now).count == 2)
+        }
+    }
+
+    /// Unmarking has to take the pending reminders with it, or turning
+    /// something off leaves it still shouting.
+    @Test func unmarkingRemovesItsReminders() {
+        let row = competition(registrationDeadline: ahead(72))
+        #expect(ReminderPlan.plans(for: [row], now: now).count == 2)
+        row.status = nil
+        #expect(ReminderPlan.plans(for: [row], now: now).isEmpty)
+    }
+
+    // MARK: the ceiling
+
+    /// Reaching this now takes 24 marked competitions, so it is a backstop
+    /// rather than something people run into. It still has to truncate
+    /// deliberately: iOS silently drops everything past its own 64, and the
+    /// nearest deadlines are the ones worth keeping.
     @Test func capKeepsTheSoonestFiring() {
         let competitions = (1...10).map { index in
             competition(
@@ -92,24 +138,6 @@ import Testing
         let cutoff = try? #require(plans.last).fireDate
         let all = ReminderPlan.plans(for: competitions, limit: .max, now: now)
         #expect(all.filter { $0.fireDate < cutoff! }.count == 4)
-    }
-
-    /// Muting frees budget: the next competition rolls into the window.
-    @Test func mutingLetsTheNextCompetitionRollIn() {
-        let competitions = (1...4).map { index in
-            competition(
-                title: "Contest \(index)",
-                url: "https://example.com/\(index)",
-                registrationDeadline: ahead(48 + Double(index)))
-        }
-        let full = ReminderPlan.plans(for: competitions, limit: 4, now: now)
-        let muted = ReminderPlan.plans(
-            for: competitions, muted: [competitions[0].key], limit: 4, now: now)
-        #expect(full.count == 4)
-        #expect(muted.count == 4)
-        // The dropped competition's slots are refilled by one further out.
-        #expect(muted.contains { $0.key == competitions[3].key })
-        #expect(muted.allSatisfy { $0.key != competitions[0].key })
     }
 
     // MARK: identity

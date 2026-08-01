@@ -121,13 +121,36 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
             Section("Notifications") {
+                LabeledContent("Permission", value: notificationStatus)
+
+                Toggle(isOn: Binding(
+                    get: { model.digestEnabled },
+                    set: { model.setDigestEnabled($0) })
+                ) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Daily summary")
+                        Text("One post each morning: what closes this week, what is running, what is new. A morning with nothing to say sends nothing.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                #if os(macOS)
+                .toggleStyle(.checkbox)
+                #endif
+                if model.digestEnabled {
+                    DatePicker("Send it at", selection: Binding(
+                        get: { model.digestTime },
+                        set: { model.setDigestTime($0) }),
+                        displayedComponents: .hourAndMinute)
+                }
+
                 Toggle(isOn: Binding(
                     get: { model.remindersEnabled },
                     set: { model.setRemindersEnabled($0) })
                 ) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Remind me before deadlines")
-                        Text(notificationStatus)
+                        Text("Remind me about competitions I mark")
+                        Text("One day and one hour before the deadline, for anything you marked Interested, Applied or Joined. Nothing you have not marked is ever notified about.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -136,14 +159,16 @@ struct SettingsView: View {
                 .toggleStyle(.checkbox)
                 #endif
                 if model.remindersEnabled {
-                    // Stated plainly because the schedule IS capped: a
-                    // truncated set must never read as a complete one.
-                    LabeledContent("Scheduled now",
-                                   value: "\(model.scheduledReminderCount) of \(ReminderPlan.defaultLimit)")
+                    LabeledContent("Reminders scheduled",
+                                   value: "\(model.scheduledReminderCount)")
+                    // Only when it actually bites. Announcing a ceiling nobody
+                    // is near would invent a scarcity that no longer exists.
+                    if model.scheduledReminderCount >= ReminderPlan.defaultLimit {
+                        Text("At the \(ReminderPlan.defaultLimit) limit: the nearest deadlines are kept and further ones join as those pass.")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
                 }
-                Text("Two reminders per competition, one day and one hour before its deadline, for the soonest \(ReminderPlan.defaultLimit) reminders. These fire whether or not the app is running. Mute any competition from its actions menu and the next one takes its place.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
             .task { await loadNotificationStatus() }
             Section("Refresh") {

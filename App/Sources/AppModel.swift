@@ -35,12 +35,13 @@ final class AppModel {
     /// (including flipping back if the user denies calendar access).
     private(set) var calendarSyncEnabled: Bool = CalendarSyncService.shared.isEnabled
 
-    /// Reminder state mirrored as observable properties, same reason as
+    /// Notification state mirrored as observable properties, same reason as
     /// `calendarSyncEnabled`: the scheduler owns the truth, but a plain
-    /// singleton read would never re-render the Settings rows or the mute item.
+    /// singleton read would never re-render the Settings rows.
     private(set) var remindersEnabled: Bool = ReminderScheduler.shared.isEnabled
     private(set) var scheduledReminderCount: Int = 0
-    private(set) var mutedReminderKeys: Set<String> = ReminderScheduler.shared.muted
+    private(set) var digestEnabled: Bool = ReminderScheduler.shared.isDigestEnabled
+    private(set) var digestTime: Date = ReminderScheduler.shared.digestTime
 
     private var autoRefreshTask: Task<Void, Never>?
     private var countdownTask: Task<Void, Never>?
@@ -83,9 +84,6 @@ final class AppModel {
         guard !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        // The very first refresh seeds the whole index; notifying about
-        // a hundred "new" competitions then would be noise.
-        let isInitialSeed = lastRefresh == nil
         // The source list is rebuilt every run so Settings toggles apply to
         // the very next refresh; search engines join at most once per day
         // to stay inside their free API quotas.
@@ -102,9 +100,10 @@ final class AppModel {
             UserDefaults.standard.set(
                 Date.now.timeIntervalSince1970, forKey: Self.lastSearchFetchKey)
         }
-        if report.newCount > 0, !isInitialSeed {
-            Notifier.postNewCompetitions(report.newTitles)
-        }
+        // Nothing is posted here any more. A refresh runs every three hours and
+        // interrupting on each one that found something was the app talking
+        // about competitions nobody had asked about. What arrived is reported
+        // once, in the morning digest, off `firstSeen`.
         recomputeMenuBar()
         let all = allCompetitions()
         await CalendarSyncService.shared.syncIfEnabled(competitions: all)
@@ -283,11 +282,15 @@ extension AppModel {
             // Losing a mark silently is the one failure worth surfacing: it is
             // the only thing in the store the person typed themselves.
             startupError = "Could not save your mark: \(error.localizedDescription)"
+            return
         }
-    }
-
-    func isReminderMuted(_ competition: Competition) -> Bool {
-        mutedReminderKeys.contains(competition.key)
+        // Immediately, not at the next refresh. Marking something is a request
+        // to be told about it, and a reminder that only starts existing three
+        // hours later can miss the deadline it was asked to cover.
+        Task {
+            await ReminderScheduler.shared.reschedule(competitions: allCompetitions())
+            adoptReminderState()
+        }
     }
 
     func setRemindersEnabled(_ on: Bool) {
@@ -297,13 +300,18 @@ extension AppModel {
         }
     }
 
-    /// Mute or unmute one competition. The scheduler re-derives the window, so
-    /// a freed slot is refilled by the next competition in line.
-    func setReminderMuted(_ isMuted: Bool, for competition: Competition) {
-        let key = competition.key
+    func setDigestEnabled(_ on: Bool) {
         Task {
-            await ReminderScheduler.shared.setMuted(
-                isMuted, key: key, competitions: allCompetitions())
+            await ReminderScheduler.shared.setDigestEnabled(
+                on, competitions: allCompetitions())
+            adoptReminderState()
+        }
+    }
+
+    func setDigestTime(_ time: Date) {
+        Task {
+            await ReminderScheduler.shared.setDigestTime(
+                time, competitions: allCompetitions())
             adoptReminderState()
         }
     }
@@ -320,6 +328,7 @@ extension AppModel {
     func adoptReminderState() {
         remindersEnabled = ReminderScheduler.shared.isEnabled
         scheduledReminderCount = ReminderScheduler.shared.scheduledCount
-        mutedReminderKeys = ReminderScheduler.shared.muted
+        digestEnabled = ReminderScheduler.shared.isDigestEnabled
+        digestTime = ReminderScheduler.shared.digestTime
     }
 }
