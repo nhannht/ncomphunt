@@ -43,7 +43,8 @@ import Testing
 
     private func insert(
         _ context: ModelContext, title: String, lastSeen: Date,
-        deadline: Date? = nil, tracked: String? = nil
+        deadline: Date? = nil, tracked: String? = nil,
+        status: CompetitionStatus? = nil
     ) {
         let dto = CompetitionDTO(
             source: "brave", title: title,
@@ -51,6 +52,7 @@ import Testing
             registrationDeadline: deadline)
         let row = Competition(dto: dto, category: .other, region: .global, now: lastSeen)
         row.trackedIssueID = tracked
+        row.status = status
         context.insert(row)
     }
 
@@ -73,5 +75,28 @@ import Testing
         let remaining = try context.fetch(FetchDescriptor<Competition>()).map(\.title)
         #expect(!remaining.contains("stale lead"))
         #expect(remaining.count == 3)
+    }
+
+    /// The store is a rebuildable cache of the feeds, but a mark is not
+    /// rebuildable from anywhere. A dateless lead someone marked and then did
+    /// not see for a fortnight must survive, or the prune quietly deletes the
+    /// only user-authored data in the app.
+    @Test func neverPrunesSomethingTheUserMarked() throws {
+        let context = try context()
+        let now = Date(timeIntervalSince1970: 1_780_000_000)
+        let old = now.addingTimeInterval(-20 * 24 * 3600)
+
+        insert(context, title: "stale lead", lastSeen: old)
+        insert(context, title: "stale but marked", lastSeen: old, status: .interested)
+        // Even an abandoned one: dropping something is a decision worth keeping,
+        // otherwise it comes back looking new the next time a source lists it.
+        insert(context, title: "stale but dropped", lastSeen: old, status: .dropped)
+        try context.save()
+
+        let removed = try CompetitionStore.prune(context, now: now)
+        #expect(removed == 1)
+
+        let remaining = try context.fetch(FetchDescriptor<Competition>()).map(\.title)
+        #expect(remaining.sorted() == ["stale but dropped", "stale but marked"])
     }
 }

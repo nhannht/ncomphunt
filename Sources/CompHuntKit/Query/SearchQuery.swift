@@ -22,6 +22,11 @@ public struct SearchQuery: Equatable, Sendable {
     public var categories: Set<CompetitionCategory>
     public var regions: Set<Region>
     public var sources: Set<SourceID>
+    /// Pipeline states to keep. Non-empty means "only things I have marked",
+    /// because an unmarked competition has no status to be in the set.
+    /// `status:any` fills it with every case, which is how "show me everything
+    /// I marked" is expressed without a second boolean to disagree with.
+    public var statuses: Set<CompetitionStatus>
     /// How soon the next date has to fall, in days.
     ///
     /// Stored as a RELATIVE window rather than the absolute pair it replaces.
@@ -42,6 +47,7 @@ public struct SearchQuery: Equatable, Sendable {
         categories: Set<CompetitionCategory> = [],
         regions: Set<Region> = [],
         sources: Set<SourceID> = [],
+        statuses: Set<CompetitionStatus> = [],
         withinDays: Int? = nil,
         phrases: [String] = [],
         terms: [String] = []
@@ -49,6 +55,7 @@ public struct SearchQuery: Equatable, Sendable {
         self.categories = categories
         self.regions = regions
         self.sources = sources
+        self.statuses = statuses
         self.withinDays = withinDays
         self.phrases = phrases
         self.terms = terms
@@ -56,8 +63,14 @@ public struct SearchQuery: Equatable, Sendable {
 
     public var isEmpty: Bool {
         categories.isEmpty && regions.isEmpty && sources.isEmpty
+            && statuses.isEmpty
             && withinDays == nil && phrases.isEmpty && terms.isEmpty
     }
+
+    /// Whether this query is asking only for marked competitions. The Marked
+    /// chip reads its highlight out of this, the same way the category chips
+    /// read theirs out of `categories`.
+    public var isMarkedOnly: Bool { !statuses.isEmpty }
 
     /// Whether the person typed anything to search FOR, as opposed to a lens to
     /// look through.
@@ -79,6 +92,12 @@ public struct SearchQuery: Equatable, Sendable {
         if !sources.isEmpty {
             guard let id = SourceID(rawValue: competition.source),
                   sources.contains(id) else { return false }
+        }
+        if !statuses.isEmpty {
+            // An unmarked competition has no status, so it fails every status
+            // filter - including `status:any`, which is exactly right.
+            guard let status = competition.status,
+                  statuses.contains(status) else { return false }
         }
         if let withinDays {
             // A row with no date cannot honestly satisfy "closing this week".
@@ -123,7 +142,7 @@ public struct SearchQuery: Equatable, Sendable {
     /// The operators the language understands. `tag:` joins this list once
     /// competitions persist their tags (COMP-6).
     public enum Field: String, CaseIterable, Sendable {
-        case category, region, source, deadline
+        case category, region, source, status, deadline
 
         /// Shown in the autocomplete.
         public var token: String { "\(rawValue):" }
@@ -134,6 +153,7 @@ public struct SearchQuery: Equatable, Sendable {
             case .category: "Competition kind"
             case .region: "Where it runs"
             case .source: "Which feed found it"
+            case .status: "How you marked it"
             case .deadline: "Closing within"
             }
         }
@@ -149,6 +169,11 @@ public struct SearchQuery: Equatable, Sendable {
                 Region.allCases.map { ($0.rawValue, $0.displayName) }
             case .source:
                 SourceID.allCases.map { ($0.rawValue, $0.displayName) }
+            case .status:
+                // `any` leads: "everything I marked" is the common ask, and the
+                // individual states are the refinement.
+                [(SearchQuery.anyStatusToken, "Anything you marked")]
+                    + CompetitionStatus.allCases.map { ($0.rawValue, $0.displayName) }
             case .deadline:
                 DeadlineSpan.all.map {
                     ($0.searchAliases[0], "Within \($0.days) day\($0.days == 1 ? "" : "s")")
@@ -224,6 +249,17 @@ public struct SearchQuery: Equatable, Sendable {
             guard let match = Self.resolve(value, among: SourceID.allCases,
                                            aliases: \.searchAliases) else { return false }
             sources.insert(match)
+        case .status:
+            // `any` is not a state, it is all of them - which keeps "marked at
+            // all" and "marked as applied" on one axis instead of two.
+            if FuzzyMatch.fold(value) == Self.anyStatusToken
+                || FuzzyMatch.fold(value) == "marked" {
+                statuses.formUnion(CompetitionStatus.allCases)
+                return true
+            }
+            guard let match = Self.resolve(value, among: CompetitionStatus.allCases,
+                                           aliases: \.searchAliases) else { return false }
+            statuses.insert(match)
         case .deadline:
             guard let days = Self.days(from: value) else { return false }
             // Narrowest wins, so `deadline:week deadline:month` means week.
@@ -231,6 +267,9 @@ public struct SearchQuery: Equatable, Sendable {
         }
         return true
     }
+
+    /// The value that means "in any pipeline state at all".
+    public static let anyStatusToken = "any"
 
     /// A window a person can name, as days.
     struct DeadlineSpan {
@@ -349,6 +388,14 @@ public struct SearchQuery: Equatable, Sendable {
             .map { "region:\($0.rawValue)" }
         parts += SourceID.allCases.filter(sources.contains)
             .map { "source:\($0.rawValue)" }
+        // Every state collapses back to `status:any`, so the Marked chip's
+        // round trip stays one short token instead of five.
+        if statuses.count == CompetitionStatus.allCases.count {
+            parts.append("status:\(Self.anyStatusToken)")
+        } else {
+            parts += CompetitionStatus.allCases.filter(statuses.contains)
+                .map { "status:\($0.rawValue)" }
+        }
         if let withinDays { parts.append("deadline:\(withinDays)d") }
         parts += phrases.map { "\"\($0)\"" }
         parts += terms

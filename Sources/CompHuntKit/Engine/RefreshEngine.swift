@@ -137,7 +137,9 @@ public enum CompetitionStore {
 
     /// Deletes stale dateless leads. Rows with no dates (mostly search hits)
     /// can never expire through `isCurrent`, so they age out once unseen for
-    /// `maxAge`. Tracked rows are never pruned.
+    /// `maxAge`. Rows carrying user state are never pruned: a YouTrack issue
+    /// id, or a status the person set. The store is a rebuildable cache of the
+    /// feeds, but what someone marked is not rebuildable from anywhere.
     @MainActor
     @discardableResult
     public static func prune(
@@ -152,6 +154,7 @@ public enum CompetitionStore {
             row.startDate == nil && row.endDate == nil
                 && row.registrationDeadline == nil
                 && row.trackedIssueID == nil
+                && row.statusRaw == nil
         }
         for row in stale {
             context.delete(row)

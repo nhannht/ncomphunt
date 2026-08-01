@@ -9,6 +9,10 @@ public enum QueryAxis: Equatable, Sendable {
     case category(CompetitionCategory)
     case region(Region)
     case source(SourceID)
+    /// One axis for the whole status set, not one per state. The Marked chip
+    /// sets every state at once, so offering to remove a single one would be a
+    /// click that leaves the list just as empty.
+    case status
     case deadline
     case phrase(String)
 
@@ -18,6 +22,7 @@ public enum QueryAxis: Equatable, Sendable {
         case .category(let category): category.displayName
         case .region(let region): region.displayName
         case .source(let source): source.displayName
+        case .status: "the marked filter"
         case .deadline: "the deadline window"
         case .phrase(let phrase): "\u{201C}\(phrase)\u{201D}"
         }
@@ -31,6 +36,9 @@ public enum QueryAxis: Equatable, Sendable {
         case .category(let category): "category:\(category.rawValue)"
         case .region(let region): "region:\(region.rawValue)"
         case .source(let source): "source:\(source.rawValue)"
+        // Nil for the same reason as deadline: the text that produced it can be
+        // any of several spellings, so removal goes through the parsed query.
+        case .status: nil
         case .deadline: nil
         case .phrase: nil
         }
@@ -57,6 +65,7 @@ public extension SearchQuery {
         var axes = CompetitionCategory.allCases.filter(categories.contains).map(QueryAxis.category)
         axes += Region.allCases.filter(regions.contains).map(QueryAxis.region)
         axes += SourceID.allCases.filter(sources.contains).map(QueryAxis.source)
+        if !statuses.isEmpty { axes.append(.status) }
         if withinDays != nil { axes.append(.deadline) }
         axes += phrases.map(QueryAxis.phrase)
         return axes
@@ -67,6 +76,7 @@ public extension SearchQuery {
         case .category(let category): categories.remove(category)
         case .region(let region): regions.remove(region)
         case .source(let source): sources.remove(source)
+        case .status: statuses.removeAll()
         case .deadline: withinDays = nil
         case .phrase(let phrase): phrases.removeAll { $0 == phrase }
         }
