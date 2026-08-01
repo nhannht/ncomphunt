@@ -2,9 +2,9 @@ import Foundation
 
 /// Turns a person's sentence into a `SearchQuery`.
 ///
-/// Declared here, never implemented here. The only implementation is on-device
-/// and lives outside this package; this repository holds the contract so the
-/// app can render a generated query without knowing what produced it.
+/// The contract the app renders against, separate from `NLFilterGenerator` (the
+/// on-device implementation) so the mapping stays testable and the UI never has
+/// to know what produced a generated query.
 public protocol QueryGenerating: Sendable {
     /// `now` is injected rather than read inside, so relative phrasing like
     /// "this month" resolves deterministically and the mapping stays testable.
