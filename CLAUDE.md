@@ -1,9 +1,11 @@
 # CLAUDE.md
 
-nCompHunt - native macOS (Swift/SwiftUI) competition indexer. Display/product
-name is nCompHunt (bundle id com.nhannht.ncomphunt, DMG slug ncomphunt); the
+nCompHunt - native macOS + iOS (Swift/SwiftUI) competition indexer.
+Display/product name is nCompHunt (bundle id com.nhannht.ncomphunt on BOTH
+platforms - same App Store record, universal purchase; DMG slug ncomphunt); the
 internal code names - target, scheme, xcodeproj, CompHuntKit module - remain
-CompHunt. Finds and lists
+CompHunt. iOS targets are CompHuntiOS + CompHuntWidgetiOS (iPhone + iPad,
+deployment target iOS 26). Finds and lists
 competitive programming contests, AI competitions, CTFs, hackathons, and design
 contests, Vietnam-first and global. Sibling of `../job-tracker/recon` (the Python
 job-recon engine) and follows its proven patterns: source plugins, normalized-URL
@@ -35,6 +37,7 @@ map in the same turn.
 
 - Library tests: `swift test`
 - App build: `cd App && xcodegen generate && xcodebuild -project CompHunt.xcodeproj -scheme CompHunt build 2>&1 | tail -50`
+- iOS app build: same xcodegen, then `xcodebuild -project CompHunt.xcodeproj -scheme CompHuntiOS -destination 'platform=iOS Simulator,name=iPhone 17 Pro' build 2>&1 | tail -50`
 - `App/CompHunt.xcodeproj` is generated from `App/project.yml` (XcodeGen) and
   gitignored - edit `project.yml`, never the xcodeproj.
 - Release: `scripts/release.sh {build|notarize|appstore}`. `notarize` builds the
@@ -74,6 +77,11 @@ map in the same turn.
   its source list from it per refresh)
 - `Sources/CompHuntKit/YouTrack/` - sink filing COMP issues (a small menu item
   in the app, not a headline button)
+- `Sources/CompHuntKit/Query/` - `SearchQuery` (operator syntax, results,
+  diagnosis, suggestions) plus the on-device "Ask" natural-language filter:
+  `NLFilterGenerator` + `GeneratedQuery` (Apple FoundationModels, no API key,
+  free on both platforms - folded in from the retired comphunt-pro overlay
+  2026-08-01; nCompHunt is free forever, there is no pro build)
 - `Sources/CompHuntKit/Support/` - `SecretsReader` (resolves Keychain-first,
   then the `~/.claude/secrets.yml` fallback), `CredentialStore`
   (`KeychainCredentialStore`), `SecretsImporter` (one-time secrets.yml -> Keychain
@@ -81,13 +89,38 @@ map in the same turn.
   Add to Calendar action), `CalendarEventPlan` (reconciliation model for the
   EventKit calendar sync; the sync itself is app-layer in
   `App/Sources/CalendarSyncService.swift`, since EventKit is unavailable to the
-  sandboxed library target)
-- `App/` - SwiftUI app: main window (NavigationSplitView, sort/group toolbar
-  menu, per-row context menu = `CompetitionActionsMenu`) + MenuBarExtra +
+  sandboxed library target), `CategoryStyle` (the ONE category color/short-label
+  mapping + `CategoryDot`; app rows, chip row, and widget all read it - never
+  hardcode a category color in a view again)
+- `App/` - SwiftUI app: main window is a `NavigationStack` (the three-pane
+  NavigationSplitView is gone): `CategoryChipRow` above the list writes the
+  category into the query string, one merged sort/group/region toolbar menu, an
+  "Ask" sparkles button (`NLFilterGenerator`, disabled with a reason when Apple
+  Intelligence is off), per-row context menu = `CompetitionActionsMenu`.
+  Inside that stack the layout is per-platform. iOS is a single panel and rows
+  tap-to-expand in place (`CompetitionExpandedView` inline, no push). macOS has
+  two styles behind a toolbar toggle (`ListStyle` @AppStorage `list.style`):
+  `list` is an `HSplitView` of `CompetitionListPane` + `CompetitionDetailPane`,
+  `table` is a full-width sortable `CompetitionTablePane` with the detail in an
+  `.inspector`. One `selectedID` drives list, table, detail, inspector and the
+  widget deep link - different projections of one state, never separate states,
+  and table header sorting writes the same `ListSort` the toolbar menu reads.
+  Group by is disabled in table style because a table is flat by design.
+  Plus MenuBarExtra +
   refresh timer + UNUserNotifications + `CalendarSyncService` (opt-in EventKit
   sync into a dedicated "nCompHunt" calendar; needs
   `NSCalendarsFullAccessUsageDescription` + the `personal-information.calendars`
-  entitlement). Settings has per-source checkboxes (UserDefaults
+  entitlement). iOS shares all of it via `#if os` splits except: MenuBar files
+  are excluded from CompHuntiOS; Settings is a toolbar-gear sheet in MainWindow
+  (no Settings scene); "Add to Calendar" presents EventKitUI's
+  `EKEventEditViewController` (`EventEditSheet.swift`, same `CalendarEventPlan`
+  shape as the macOS .ics path); `BackgroundRefresh.swift` (BGAppRefreshTask id
+  `com.nhannht.ncomphunt.refresh`, `.backgroundTask` scene modifier) stands in
+  for the always-running macOS refresh timer; secrets import uses
+  `.fileImporter`. App Group id branches in `AppGroup.swift`: team-prefixed on
+  macOS, bare `group.com.nhannht.ncomphunt` on iOS (each platform's
+  entitlements files match). The YouTrack curl fallback is macOS-only (iOS
+  cannot shell out; a Cloudflare 1010 block surfaces as its 403). Settings has per-source checkboxes (UserDefaults
   `source.<id>.enabled` via `SourcePreferences`) plus an API Keys section that
   stores keys in the Keychain (`CredentialStore`) with an "Import from
   secrets.yml" migration; search sources additionally gate on a 24h window
@@ -133,49 +166,26 @@ map in the same turn.
 - Dedupe key: lowercased URL without query string or trailing slash.
 - showcase/ must hold 2+ real screenshots before the product is called done.
 
-## Website (`website/`)
+## Website (separate repo, 2026-08-02)
 
-Marketing site over the brand gradient (#D825FC > #1C3D7A > #3574F0). Two
-materials, and the split is deliberate: `.paper` (opaque, globals.css) for every
-surface that carries copy, glass for chrome only (the GlassSurface nav, hero
-chips). Text never sits on a translucent surface over the animated background -
-that was the readability bug. Next.js 16 App Router + Tailwind v4 + shadcn
-(nova preset) + React Bits components (FloatingLines, GlassSurface, GooeyNav,
-SplitText, GradientText, ShinyText, SpotlightCard, LogoLoop, CardSwap, Carousel;
-Aurora, GlareHover, StarBorder, Dock, SpecularButton installed but unused -
-installed via `pnpm dlx shadcn add https://reactbits.dev/r/<Name>-TS-TW` into
-`components/`). Site-wide background is FloatingLines (three.js,
-`@types/three` dev dep) mounted fixed inset-0 -z-10 in `site/Background.tsx`
-so it follows the viewport on scroll, with a two-pass scrim over the canvas
-(flat + radial) so wave peaks never land under body copy. Local customizations:
-FloatingLines pointer listeners moved canvas -> window (canvas is
-pointer-events-none); Carousel gained an optional `image` item field + glass
-palette; GooeyNav dropped its black-backdrop gooey blend (leaks inside
-GlassSurface's backdrop-filter stacking context) in favor of plain particles
-colored by `--color-1..4` in globals.css, and its particle spawner moved to
-`lib/particles.ts` (CSS in globals.css) so `components/ParticleButton.tsx` -
-the site's one button, a `.mbtn` material pill that fills white on hover and
-fires the same burst on click - shares one motion language with the nav.
-pnpm only (migrated from bun 2026-07-31): `cd website && pnpm run build`; dev
-server binds loopback/Tailscale, never 0.0.0.0. Page sections live in `components/site/`; copy and links in
-`lib/site.ts` - `downloadUrl` is the evergreen DMG link
-(`releases/latest/download/ncomphunt.dmg`); every GitHub release must upload an
-unversioned `ncomphunt.dmg` asset alongside the versioned one so the site never
-needs a rebuild per app release. Distribution is both direct (GitHub release DMG
-+ Homebrew cask `nhannht/homebrew-tap`, Developer ID + notarized) and the Mac App
-Store (app id 6791654003, sandboxed build).
+The marketing site is NOT in this repo. It lives beside it at
+`../website` (repo `nhannht/ncomphunt-website`), extracted with
+`git-filter-repo` so its twelve commits kept their history. Its own
+`CLAUDE.md` carries the stack, design rules, and deploy details - do not
+re-document them here.
 
-Deployed at https://ncomphunt.nhannht.io.vn via GitHub Pages (migrated off the
-sg-hs nginx rsync 2026-07-31): `.github/workflows/deploy-website.yml` builds
-the `output: "export"` static site (`images.unoptimized`, sitemap/robots
-`force-static`) with pnpm on every master push touching `website/**` and
-publishes `out/` with actions/deploy-pages. Custom domain lives in
-`website/public/CNAME`; DNS is a Cloudflare CNAME `ncomphunt` ->
-`nhannht.github.io`, DNS-only so GitHub can provision the TLS cert (zone
-nhannht.io.vn, token in `~/.config/cloudflare/api_token.env`). Redeploy = push
-to master. Note: with `output: "export"`, `next start` no longer serves -
-preview `out/` with any static server. Screenshots are copied from `showcase/`
-into `website/public/screenshots/` (hero uses `raw/lightmodemain.png`; the
-gallery uses the five `appstore/as*.png` renders). SEO: metadata + OpenGraph in
-`app/layout.tsx`, JSON-LD SoftwareApplication in `app/page.tsx`,
-`app/sitemap.ts`, `app/robots.ts`, favicon generated at `app/icon.png`.
+What this repo still owes the site:
+
+- **Every GitHub release must upload an unversioned `ncomphunt.dmg` asset**
+  alongside the versioned one. The site's download button points at the
+  evergreen `releases/latest/download/ncomphunt.dmg`, so a missing
+  unversioned asset breaks it silently, and no site rebuild can fix it.
+- **Showcase images.** The site copies from `showcase/` into its own
+  `public/screenshots/`. New App Store renders here mean a copy over there.
+- **PRIVACY.md is a pointer, not the policy.** The real document is the
+  website repo's `PRIVACY.md`, because its `/privacy` page is the only thing
+  that reads it. Edit it there.
+
+Distribution (owned here): direct GitHub release DMG + Homebrew cask
+`nhannht/homebrew-tap` (Developer ID, notarized), and the Mac App Store
+(app id 6791654003, sandboxed build).
