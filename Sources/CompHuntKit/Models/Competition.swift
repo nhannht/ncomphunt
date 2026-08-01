@@ -2,7 +2,12 @@ import Foundation
 import SwiftData
 
 /// Persisted competition. The store is a rebuildable cache of remote feeds;
-/// `firstSeen` and `trackedIssueID` are the only fields that carry local state.
+/// `firstSeen`, `trackedIssueID` and `statusRaw` are the only fields that carry
+/// local state.
+///
+/// Changing the stored properties here REQUIRES a new version in
+/// `CompetitionSchema.swift`. The store shipped, and an unversioned change traps
+/// at launch rather than degrading.
 @Model
 public final class Competition {
     #Unique<Competition>([\.key])
@@ -24,6 +29,9 @@ public final class Competition {
     public var lastSeen: Date
     /// YouTrack issue id (e.g. COMP-12) once the user tracks this competition.
     public var trackedIssueID: String?
+    /// The user's pipeline state, or nil when they have not marked this at all.
+    /// Added in schema V2; see `CompetitionSchema.swift`.
+    public var statusRaw: String?
 
     public var category: CompetitionCategory {
         get { CompetitionCategory(rawValue: categoryRaw) ?? .other }
@@ -52,9 +60,12 @@ public final class Competition {
         self.firstSeen = now
         self.lastSeen = now
         self.trackedIssueID = nil
+        self.statusRaw = nil
     }
 
-    /// Refresh from a newer DTO, preserving `firstSeen` and tracking state.
+    /// Refresh from a newer DTO, preserving `firstSeen` and every local field.
+    /// `trackedIssueID` and `statusRaw` are simply never assigned here, which is
+    /// what keeps a refresh from erasing what the user recorded.
     /// Never-downgrade policy: sources sometimes serve slimmer copies of a
     /// post they served richly before (ybox recommendation rails), so an
     /// empty incoming field must not clobber a known value.

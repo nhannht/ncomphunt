@@ -57,7 +57,12 @@ final class AppModel {
             try FileManager.default.createDirectory(
                 at: supportDir, withIntermediateDirectories: true)
             let config = ModelConfiguration(url: supportDir.appending(path: "CompHunt.store"))
-            container = try ModelContainer(for: Competition.self, configurations: config)
+            // The migration plan is what lets a store written by v0.1-v0.3 open
+            // at all after a property is added. Without it SwiftData traps.
+            container = try ModelContainer(
+                for: Competition.self,
+                migrationPlan: CompetitionMigrationPlan.self,
+                configurations: config)
         } catch {
             // The store is a rebuildable cache: losing it costs one refresh.
             startupError = "Persistent store unavailable, using in-memory cache: \(error)"
