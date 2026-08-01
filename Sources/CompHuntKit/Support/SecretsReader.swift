@@ -41,14 +41,24 @@ public struct YouTrackConfig: Sendable {
 /// mcpServers.youtrack (same discovery as job-recon's config.py). The
 /// placeholder/empty filter applies to values from both origins.
 public enum SecretsReader {
-    public static var defaultSecretsPath: URL {
+    /// The process home. `homeDirectoryForCurrentUser` is unavailable on iOS;
+    /// there the app-container home stands in, where these dev files never
+    /// exist, so resolution degrades to Keychain-only exactly as it does in
+    /// the sandboxed macOS build.
+    private static var home: URL {
+        #if os(macOS)
         FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".claude/secrets.yml")
+        #else
+        URL(filePath: NSHomeDirectory(), directoryHint: .isDirectory)
+        #endif
+    }
+
+    public static var defaultSecretsPath: URL {
+        home.appending(path: ".claude/secrets.yml")
     }
 
     public static var defaultClaudeJSONPath: URL {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appending(path: ".claude.json")
+        home.appending(path: ".claude.json")
     }
 
     public static func clistCredentials(

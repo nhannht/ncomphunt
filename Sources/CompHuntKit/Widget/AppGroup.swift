@@ -7,10 +7,18 @@ import Foundation
 /// it. If `containerURL` resolves nil at runtime the group id and the entitlement
 /// disagree (try the team-prefixed `V3P5U9Z68M.group...` form instead).
 public enum AppGroup {
-    /// Team-id-prefixed form: the macOS-native App Group convention that signs
-    /// without a provisioning profile (the bare iOS-style `group.` id would
-    /// demand one). Must match both `.entitlements` files.
+    /// Must match the platform's `.entitlements` files on both the app and the
+    /// widget target.
+    /// - macOS: team-id-prefixed form, the macOS-native App Group convention
+    ///   that signs without a provisioning profile (the bare iOS-style `group.`
+    ///   id would demand one).
+    /// - iOS: bare `group.` form, the only shape iOS provisioning accepts; iOS
+    ///   always provisions anyway, so the macOS constraint never applies.
+    #if os(iOS)
+    public static let id = "group.com.nhannht.ncomphunt"
+    #else
     public static let id = "V3P5U9Z68M.group.com.nhannht.ncomphunt"
+    #endif
 
     public static var containerURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: id)

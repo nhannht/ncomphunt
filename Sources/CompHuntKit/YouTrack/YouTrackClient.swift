@@ -55,6 +55,7 @@ public struct YouTrackClient: Sendable {
     }
 
     private func send(url: URL, body: Data) async throws -> Data {
+        #if os(macOS)
         do {
             return try await HTTP.post(url, headers: authHeaders, body: body)
         } catch HTTPError.badStatus(let code, _) where code == 403 {
@@ -63,6 +64,11 @@ public struct YouTrackClient: Sendable {
             // precedent), so retry through it.
             return try await postViaCurl(url: url, body: body)
         }
+        #else
+        // iOS cannot shell out, so there is no curl to fall back to: a
+        // Cloudflare 1010 block surfaces as the 403 it is.
+        return try await HTTP.post(url, headers: authHeaders, body: body)
+        #endif
     }
 
     private var authHeaders: [String: String] {
@@ -73,6 +79,7 @@ public struct YouTrackClient: Sendable {
         ]
     }
 
+    #if os(macOS)
     private func postViaCurl(url: URL, body: Data) async throws -> Data {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/curl")
@@ -112,4 +119,5 @@ public struct YouTrackClient: Sendable {
             }
         }
     }
+    #endif
 }
