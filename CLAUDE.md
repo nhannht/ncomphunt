@@ -77,8 +77,9 @@ map in the same turn.
   its source list from it per refresh)
 - `Sources/CompHuntKit/YouTrack/` - sink filing COMP issues (a small menu item
   in the app, not a headline button)
-- `Sources/CompHuntKit/Query/` - `SearchQuery` (operator syntax, results,
-  diagnosis, suggestions) plus the on-device "Ask" natural-language filter:
+- `Sources/CompHuntKit/Query/` - `SearchQuery` (operators `category:`, `region:`,
+  `source:`, `status:`, `deadline:`, plus results, diagnosis, suggestions) plus
+  the on-device "Ask" natural-language filter:
   `NLFilterGenerator` + `GeneratedQuery` (Apple FoundationModels, no API key,
   free on both platforms - folded in from the retired comphunt-pro overlay
   2026-08-01; nCompHunt is free forever, there is no pro build)
@@ -91,7 +92,9 @@ map in the same turn.
   `App/Sources/CalendarSyncService.swift`, since EventKit is unavailable to the
   sandboxed library target), `CategoryStyle` (the ONE category color/short-label
   mapping + `CategoryDot`; app rows, chip row, and widget all read it - never
-  hardcode a category color in a view again)
+  hardcode a category color in a view again), `ReminderPlan` + `DigestPlan` (the
+  two notification planners, see the notification model below), `DashboardStats`
+  (all dashboard counting; the view renders and derives nothing)
 - `App/` - SwiftUI app: main window is a `NavigationStack` (the three-pane
   NavigationSplitView is gone): `CategoryChipRow` above the list writes the
   category into the query string, one merged sort/group/region toolbar menu, an
@@ -106,6 +109,10 @@ map in the same turn.
   widget deep link - different projections of one state, never separate states,
   and table header sorting writes the same `ListSort` the toolbar menu reads.
   Group by is disabled in table style because a table is flat by design.
+  A leading "Marked" chip (divided off from the category chips - it is a second
+  axis, not a sixth category) writes `status:any`. A Dashboard toolbar button
+  opens `DashboardView`, its own `Window` scene on macOS and a sheet on iOS,
+  the same split Settings uses.
   Plus MenuBarExtra +
   refresh timer + UNUserNotifications + `CalendarSyncService` (opt-in EventKit
   sync into a dedicated "nCompHunt" calendar; needs
@@ -157,10 +164,49 @@ map in the same turn.
   issue with Type=Task in the same call (transient-failure-safe, mirrors
   job-recon `youtrack.py`). No auto-filing. Outcomes surface as notifications.
 
+## The mark, and the notification model (2026-08-02)
+
+`CompetitionStatus` (interested / applied / joined / done / dropped) is the app's
+ONLY user-authored state. A competition carrying one is MARKED, and marking is
+what earns it a reminder.
+
+```
+  every competition  ->  DigestPlan    ->  ONE post each morning (08:00 default)
+                                           "6 closing this week - 2 running now"
+                                           quiet morning = no post at all
+
+  marked only        ->  ReminderPlan  ->  1 day + 1 hour before the deadline
+                                           done/dropped keep the mark, stop firing
+```
+
+Rules that are easy to violate later:
+
+- **Nothing unmarked ever notifies.** This inverted an opt-out model on
+  2026-08-02 (COMP-40 shipped every competition subscribed, with a per-row Mute).
+  There is no mute list any more, and reintroducing one means the default went
+  wrong again.
+- **The two planners stay separate.** A digest has no competition attached, so it
+  cannot go through `ReminderPlan` without a fake row. They share only
+  `Notifier.replace(prefix:with:)` and each owns its identifier prefix
+  (`reminder.` / `digest.`), which is what stops one clearing the other.
+- **Digest counts are computed relative to the morning they fire on**, not to
+  now, and only 2 mornings are scheduled ahead. Longer lookahead means stale
+  numbers; going quiet is the honest failure.
+- **User state on `Competition` requires a prune exemption.** `statusRaw` and
+  `trackedIssueID` are both spared in `CompetitionStore.prune`. The store is a
+  rebuildable cache of the feeds; a mark is not rebuildable from anywhere.
+- **Adding a stored property to `Competition` requires a new version in
+  `CompetitionSchema.swift`.** The store shipped in v0.1-v0.3; an unversioned
+  change traps at launch (`Attempting to set value for unknown key`), before
+  there is any UI to report it in. `CompetitionSchemaV1` is frozen - never edit
+  it, the migration matches stores against it.
+
 ## Conventions
 
 - Swift 6 strict concurrency; sources return plain `CompetitionDTO` values,
   SwiftData writes happen in the engine/app layer.
+- All status writes go through `AppModel.setStatus`, never a view's own model
+  context, so the save and the reschedule cannot come apart.
 - Fixture-based tests in `Tests/CompHuntKitTests/Fixtures/` - never hit the
   network in tests.
 - Dedupe key: lowercased URL without query string or trailing slash.
