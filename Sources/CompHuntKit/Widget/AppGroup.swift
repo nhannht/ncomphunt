@@ -29,3 +29,17 @@ public enum AppGroup {
         containerURL?.appending(path: "next-contests.json")
     }
 }
+
+/// `ncomphunt://open?key=<key>` - the one route into a specific competition,
+/// used by both a widget row tap and a reminder tap.
+///
+/// Built through `URLComponents` rather than interpolation because a dedupe key
+/// IS a URL: interpolating one straight into a query string loses everything
+/// after its `?` and mangles its slashes.
+public func competitionDeepLink(key: String) -> URL {
+    var components = URLComponents()
+    components.scheme = "ncomphunt"
+    components.host = "open"
+    components.queryItems = [URLQueryItem(name: "key", value: key)]
+    return components.url ?? URL(string: "ncomphunt://open")!
+}
