@@ -88,19 +88,12 @@ struct MainWindow: View {
                     .help("Switch between the list and the table")
                 }
                 #endif
-                ToolbarItem(placement: .primaryAction) {
-                    if isResolving {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Button("Ask", systemImage: "sparkles", action: resolveSearchText)
-                            .disabled(
-                                generator.unavailableReason != nil
-                                    || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .help(generator.unavailableReason
-                                ?? "Turn what you typed into filters")
-                    }
-                }
-                ToolbarItem(placement: .secondaryAction) {
+                // One group, not three items across two placements. Mixing
+                // .primaryAction with .secondaryAction let the system put the
+                // view-options menu in its own region, so it floated alone in
+                // the middle of the title bar with uneven gaps either side.
+                // Buttons that belong together have to be declared together.
+                ToolbarItemGroup(placement: .primaryAction) {
                     Menu {
                         Picker("Sort by", selection: $sort) {
                             ForEach(ListSort.allCases) { Text($0.label).tag($0) }
@@ -122,8 +115,19 @@ struct MainWindow: View {
                             ? "line.3.horizontal.decrease.circle.fill"
                             : "line.3.horizontal.decrease.circle")
                     }
-                }
-                ToolbarItem(placement: .primaryAction) {
+                    .help("Sort, group, and filter by region")
+
+                    if isResolving {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("Ask", systemImage: "sparkles", action: resolveSearchText)
+                            .disabled(
+                                generator.unavailableReason != nil
+                                    || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .help(generator.unavailableReason
+                                ?? "Turn what you typed into filters")
+                    }
+
                     if model.isRefreshing {
                         ProgressView().controlSize(.small)
                     } else {
