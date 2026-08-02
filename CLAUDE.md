@@ -68,7 +68,15 @@ map in the same turn.
   over the `SearchCatalog` query set, gated by `SearchHitMapper`), Fake
   (self-test). DuckDuckGo was evaluated and rejected: its scrapeable endpoints
   serve bot-challenge pages (HTTP 202) and it has no official web-results API.
-- `Sources/CompHuntKit/Engine/` - `Classifier` (category + Vietnam detection;
+- `Sources/CompHuntKit/Engine/` - `Classifier` (`tags(for:)` returns EVERY
+  category the text supports, in priority order; `category(for:)` is a
+  projection of it - `tags.first ?? .other` - never a second decision. Keyword
+  needles are word-anchored, and a `*` prefix additionally allows a word-FINAL
+  match, which is what makes `picoCTF` a CTF while `ImpactForge` is not. A
+  source that declares its own kind ends the search. The last four categories
+  exist because 81 rows sat in `.other`, all from ybox, 88% of them naming an
+  activity the taxonomy had no case for - see
+  `../research/comp-27-classification/`. Also Vietnam detection;
   VN detection = `.vn` host, VN place names, and a `vietnamContestBrands`
   allowlist that tags VN technical contests - VNOI, WhiteHat, Zalo, SVATTT -
   arriving from clist/CTFtime/Codeforces under a non-.vn host and English title),

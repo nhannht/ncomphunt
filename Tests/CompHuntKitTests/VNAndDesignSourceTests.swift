@@ -110,10 +110,26 @@ import Testing
         #expect(hiii.title.contains("Brand & Communication Design"))
     }
 
-    @Test func classifiesAsDesign() throws {
+    /// Contest Watchers is the creative lane, and every row must land somewhere
+    /// in it rather than falling to `.other`.
+    ///
+    /// This used to assert `.design` for all three, which held only while
+    /// `design` was a catch-all for anything creative. Splitting `media` out of
+    /// it moved the photography festival, so the rows are now asserted
+    /// individually - a stricter check than the blanket one it replaces.
+    @Test func classifiesIntoTheCreativeLane() throws {
         let dtos = ContestWatchersSource.parse(try fixture("contestwatchers", "xml"))
+        let expected: [String: CompetitionCategory] = [
+            "Kokuyo": .design,
+            "PHOTO IS": .media,
+            "Hiiibrand": .design,
+        ]
         for dto in dtos {
-            #expect(Classifier.category(for: dto) == .design)
+            let category = Classifier.category(for: dto)
+            #expect(category != .other, "\(dto.title) fell out of the creative lane")
+            if let (_, want) = expected.first(where: { dto.title.contains($0.key) }) {
+                #expect(category == want, "\(dto.title) classified as \(category)")
+            }
         }
     }
 
