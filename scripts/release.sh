@@ -159,9 +159,16 @@ notarize() {
   staple_and_verify "$APP" "app"
 
   # 2. build the DMG around the stapled app
-  STAGE="$BUILD_DIR/dmg-stage"
-  rm -rf "$STAGE"
-  mkdir -p "$STAGE"
+  # Stage OUTSIDE the repo. A drag-to-install DMG needs an /Applications
+  # symlink and hdiutil bakes it into the image, but a symlink to an absolute
+  # path outside the tree turns every recursive tool that follows symlinks
+  # (IDE indexers, find -L, rsync -L) into a crawler of the whole filesystem,
+  # starting from inside our repo. IntelliJ walked this one into
+  # /Applications/Xcode.app: .release went from 63 files to 1,475,058, and no
+  # exclude rule can stop it because the resolved path is not under the
+  # project root. The trap also covers an interrupted or failed notarize run.
+  STAGE="$(mktemp -d)"
+  trap 'rm -rf "$STAGE"' EXIT
   cp -R "$APP" "$STAGE/"
   ln -s /Applications "$STAGE/Applications"
   rm -f "$DMG"
