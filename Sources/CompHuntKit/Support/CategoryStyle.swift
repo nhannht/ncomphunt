@@ -16,6 +16,10 @@ public extension CompetitionCategory {
         case .ai: .orange
         case .hackathon: .teal
         case .design: .pink
+        case .writing: .brown
+        case .media: .red
+        case .business: .green
+        case .academic: .indigo
         case .other: .gray
         }
     }

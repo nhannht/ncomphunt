@@ -52,7 +52,8 @@ map in the same turn.
 
 - `Sources/CompHuntKit/Models/` - `CompetitionDTO` (Sendable struct sources
   return), `Competition` (SwiftData `@Model`, `#Unique` on `key`), `Category`
-  (cp/ctf/ai/hackathon/design/other), `Region` (vietnam/global)
+  (cp/ctf/ai/hackathon/design/writing/media/business/academic/other),
+  `Region` (vietnam/global)
 - `Sources/CompHuntKit/Sources/` - one file per source implementing
   `CompetitionSource` (`fetch() async throws -> [CompetitionDTO]`): CTFtime,
   Devpost, clist.by, Codeforces (keyless public `contest.list` API, upcoming

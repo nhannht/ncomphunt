@@ -28,6 +28,10 @@ public extension CompetitionCategory {
         case .ai: "AI"
         case .hackathon: "Hack"
         case .design: "Design"
+        case .writing: "Write"
+        case .media: "Media"
+        case .business: "Biz"
+        case .academic: "Acad"
         case .other: ""
         }
     }

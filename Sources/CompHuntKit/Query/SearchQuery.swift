@@ -414,6 +414,10 @@ extension CompetitionCategory {
         case .ai: [rawValue, "machine learning", "ml", "data science", "kaggle"]
         case .hackathon: [rawValue, "hack"]
         case .design: [rawValue, "art", "poster", "creative"]
+        case .writing: [rawValue, "essay", "poem", "story", "slogan", "review"]
+        case .media: [rawValue, "photo", "photography", "film", "video", "music"]
+        case .business: [rawValue, "startup", "pitch", "case", "entrepreneur"]
+        case .academic: [rawValue, "quiz", "debate", "speech", "maths", "scholarship"]
         case .other: [rawValue, "misc"]
         }
     }

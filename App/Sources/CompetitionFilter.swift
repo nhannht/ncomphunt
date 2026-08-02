@@ -30,6 +30,10 @@ enum CompetitionFilter: Hashable, Identifiable, CaseIterable {
         case .category(.ai): "brain"
         case .category(.hackathon): "hammer"
         case .category(.design): "paintbrush"
+        case .category(.writing): "pencil.line"
+        case .category(.media): "camera"
+        case .category(.business): "chart.line.uptrend.xyaxis"
+        case .category(.academic): "graduationcap"
         case .category(.other): "questionmark.circle"
         }
     }
