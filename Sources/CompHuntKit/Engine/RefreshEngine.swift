@@ -90,6 +90,10 @@ public struct RefreshEngine: Sendable {
     public func refresh(into context: ModelContext, now: Date = .now) async -> RefreshReport {
         let (dtos, results) = await fetchAll()
         let newTitles = (try? CompetitionStore.upsert(dtos, into: context, now: now)) ?? []
+        // Rows this fetch did not return are unreachable by the loop above, so
+        // the classifier is run over the leftovers here rather than only over
+        // what a feed happens to be listing today.
+        _ = try? CompetitionStore.reclassifyUnplaced(context)
         _ = try? CompetitionStore.prune(context, now: now)
         return RefreshReport(results: results, newTitles: newTitles)
     }
@@ -133,6 +137,49 @@ public enum CompetitionStore {
         }
         try context.save()
         return newTitles
+    }
+
+    /// Re-runs the classifier over rows already in the store that never landed
+    /// anywhere.
+    ///
+    /// A row is classified once, at the moment a source hands it over. A feed
+    /// only lists what is current, so a row that scrolled off keeps whatever
+    /// answer the classifier gave the day it was last served. Measured on a
+    /// live store: ybox listed 44 competitions while the store held 117, so 73
+    /// rows carried answers from a build with four fewer categories in it and
+    /// no refresh could ever reach them.
+    ///
+    /// Scoped to `.other` deliberately. A row that already has a category may
+    /// have got it from a source that DECLARED it - CTFtime, Codeforces and
+    /// MLContests all set `dto.category` directly - and the store does not
+    /// record which answers were declared and which were guessed. Re-deriving
+    /// those from stored text would downgrade them: `NextGen Innovation2026` is
+    /// `.ai` because MLContests says so, and nothing in its title says it.
+    /// `.other` is the one value with nothing below it, so this pass can only
+    /// improve a row, never spoil one.
+    @MainActor
+    @discardableResult
+    public static func reclassifyUnplaced(_ context: ModelContext) throws -> Int {
+        let unplaced = CompetitionCategory.other.rawValue
+        let descriptor = FetchDescriptor<Competition>(
+            predicate: #Predicate { $0.categoryRaw == unplaced })
+        var moved = 0
+        for row in try context.fetch(descriptor) {
+            // `category: nil` on purpose: passing the stored `.other` would be
+            // read as a source declaring it and short-circuit the classifier.
+            let dto = CompetitionDTO(
+                source: row.source, title: row.title, organizer: row.organizer,
+                url: row.url, category: nil, location: row.location,
+                prize: row.prize, details: row.details)
+            let category = Classifier.category(for: dto)
+            guard category != .other else { continue }
+            row.categoryRaw = category.rawValue
+            moved += 1
+        }
+        if moved > 0 {
+            try context.save()
+        }
+        return moved
     }
 
     /// Deletes stale dateless leads. Rows with no dates (mostly search hits)

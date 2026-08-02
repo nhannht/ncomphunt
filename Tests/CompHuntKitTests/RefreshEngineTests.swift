@@ -44,6 +44,61 @@ private func freshContext() throws -> ModelContext {
         #expect(fake.fetched == FakeSource.samples.count)
     }
 
+    /// A feed only lists what is current, so a row that scrolled off is never
+    /// handed to the classifier again and keeps the answer it got the day it
+    /// was last served. On a live store 73 of 117 ybox rows were in that state,
+    /// carrying answers from a build with four fewer categories in it.
+    @Test func aRowNoSourceStillServesIsStillReclassified() throws {
+        let context = try freshContext()
+        let stranded = Competition(
+            dto: CompetitionDTO(
+                source: "ybox",
+                title: "[HN] Cuộc Thi Hùng Biện Kinh Tế Đỉnh Cao",
+                url: "https://ybox.vn/cuoc-thi/stranded"),
+            category: .other, region: .vietnam)
+        context.insert(stranded)
+        try context.save()
+
+        #expect(try CompetitionStore.reclassifyUnplaced(context) == 1)
+        #expect(stranded.category == .academic)
+    }
+
+    /// The pass may only ever improve a row. A category already on a row can
+    /// have come from a source that DECLARED it, and the store does not record
+    /// which answers were declared - so re-deriving one from stored text would
+    /// downgrade it. `.other` is the only value with nothing below it.
+    @Test func aRowThatAlreadyLandedIsNeverTouched() throws {
+        let context = try freshContext()
+        // What MLContests declares: nothing in the title says "ai".
+        let declared = Competition(
+            dto: CompetitionDTO(
+                source: "mlcontests", title: "NextGen Innovation 2026",
+                url: "https://example.com/nextgen"),
+            category: .ai, region: .global)
+        context.insert(declared)
+        try context.save()
+
+        #expect(try CompetitionStore.reclassifyUnplaced(context) == 0)
+        #expect(declared.category == .ai)
+    }
+
+    /// An honest `.other` survives the pass. Most ybox titles name the prize
+    /// and never the activity, so there is nothing in them to match.
+    @Test func aRowWithNothingToMatchStaysOther() throws {
+        let context = try freshContext()
+        let unplaceable = Competition(
+            dto: CompetitionDTO(
+                source: "ybox",
+                title: "[Toàn Cầu] Cơ Hội Nhận 1 Tỷ Đồng Từ Chương Trình Connections",
+                url: "https://ybox.vn/cuoc-thi/unplaceable"),
+            category: .other, region: .vietnam)
+        context.insert(unplaceable)
+        try context.save()
+
+        #expect(try CompetitionStore.reclassifyUnplaced(context) == 0)
+        #expect(unplaceable.category == .other)
+    }
+
     @Test func secondRefreshCreatesNoDuplicates() async throws {
         let context = try freshContext()
         let engine = RefreshEngine(sources: [FakeSource()])
