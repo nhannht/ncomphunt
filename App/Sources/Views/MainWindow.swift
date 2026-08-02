@@ -46,122 +46,39 @@ struct MainWindow: View {
     private let generator = NLFilterGenerator()
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                if let queryMessage {
-                    Text(queryMessage)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 12)
-                        .padding(.bottom, 4)
-                }
-                CompetitionListPane(
-                    query: query, sort: $sort,
-                    grouping: grouping, style: style,
-                    categorySelection: categorySelection,
-                    markedOnly: markedOnly,
-                    onRelax: relax, onClear: clearFilters,
-                    selectedID: $selectedID)
+        shell
+            .task {
+                adoptLegacyFilters()
+                model.startAutoRefresh()
+                applyDeepLinkSelection()
             }
-            .searchable(text: $queryText, prompt: searchPrompt)
-            .searchSuggestions {
-                ForEach(SearchQuery.suggestions(for: queryText)) { suggestion in
-                    HStack {
-                        Text(suggestion.label)
-                        Spacer()
-                        Text(suggestion.detail)
-                            .foregroundStyle(.secondary)
-                    }
-                    .searchCompletion(suggestion.completion)
-                }
+            .onChange(of: queryText) {
+                queryMessage = nil
+                syncMenuBarLens()
             }
-            .onSubmit(of: .search, resolveSearchText)
-            .navigationTitle("nCompHunt")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                #if os(macOS)
-                ToolbarItem(placement: .navigation) {
-                    Picker("Layout", selection: $style) {
-                        ForEach(ListStyle.allCases) { style in
-                            Label(style.label, systemImage: style.systemImage)
-                                .tag(style)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .help("Switch between the list and the table")
-                }
-                #endif
-                // One group, not three items across two placements. Mixing
-                // .primaryAction with .secondaryAction let the system put the
-                // view-options menu in its own region, so it floated alone in
-                // the middle of the title bar with uneven gaps either side.
-                // Buttons that belong together have to be declared together.
-                ToolbarItemGroup(placement: .primaryAction) {
-                    Button("Dashboard", systemImage: "chart.bar") {
-                        #if os(macOS)
-                        openWindow(id: CompHuntRoot.dashboardWindowID)
-                        #else
-                        dashboardPresented = true
-                        #endif
-                    }
-                    .help("See the shape of your list and your pipeline")
+            .onChange(of: model.deepLinkSelection) { applyDeepLinkSelection() }
+    }
 
-                    Menu {
-                        Picker("Sort by", selection: $sort) {
-                            ForEach(ListSort.allCases) { Text($0.label).tag($0) }
-                        }
-                        .pickerStyle(.inline)
-                        Picker("Group by", selection: $grouping) {
-                            ForEach(ListGrouping.allCases) { Text($0.label).tag($0) }
-                        }
-                        .pickerStyle(.inline)
-                        // The table is flat by design; a disabled picker says
-                        // so, where an ignored one would just lie.
-                        .disabled(groupingUnavailable)
-                        Picker("Region", selection: regionSelection) {
-                            ForEach(RegionFilter.allCases) { Text($0.label).tag($0) }
-                        }
-                        .pickerStyle(.inline)
-                    } label: {
-                        Label("View options", systemImage: regionSelection.wrappedValue.isActive
-                            ? "line.3.horizontal.decrease.circle.fill"
-                            : "line.3.horizontal.decrease.circle")
-                    }
-                    .help("Sort, group, and filter by region")
-
-                    if isResolving {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Button("Ask", systemImage: "sparkles", action: resolveSearchText)
-                            .disabled(
-                                generator.unavailableReason != nil
-                                    || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .help(generator.unavailableReason
-                                ?? "Turn what you typed into filters")
-                    }
-
-                    if model.isRefreshing {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Button("Refresh", systemImage: "arrow.clockwise") {
-                            Task { await model.refresh() }
-                        }
-                    }
-                }
-                #if os(iOS)
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Settings", systemImage: "gear") { settingsPresented = true }
-                }
-                #endif
-            }
-        }
+    /// The window's outer shape, and the one place the platforms genuinely
+    /// differ. The desktop puts the category filter in a sidebar column, where
+    /// there is width to spare; the phone keeps the chip row, where there is
+    /// not. Ten categories overflowed the chip row's single scrolling line -
+    /// Academic sat past the right edge, off screen - and a filter you have to
+    /// scroll sideways to find is not a filter.
+    @ViewBuilder
+    private var shell: some View {
         #if os(macOS)
-        .frame(minWidth: 700, minHeight: 420)
-        #endif
-        #if os(iOS)
+        NavigationSplitView {
+            CategorySidebar(selection: categorySelection, markedOnly: markedOnly)
+                .navigationSplitViewColumnWidth(min: 150, ideal: 172, max: 220)
+        } detail: {
+            content
+        }
+        .frame(minWidth: 860, minHeight: 420)
+        #else
+        NavigationStack {
+            content
+        }
         .sheet(isPresented: $settingsPresented) {
             NavigationStack {
                 SettingsView()
@@ -189,16 +106,119 @@ struct MainWindow: View {
         }
         .eventEditSheet()
         #endif
-        .task {
-            adoptLegacyFilters()
-            model.startAutoRefresh()
-            applyDeepLinkSelection()
+    }
+
+    private var content: some View {
+        VStack(spacing: 0) {
+            if let queryMessage {
+                Text(queryMessage)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 4)
+            }
+            CompetitionListPane(
+                query: query, sort: $sort,
+                grouping: grouping, style: style,
+                categorySelection: categorySelection,
+                markedOnly: markedOnly,
+                onRelax: relax, onClear: clearFilters,
+                selectedID: $selectedID)
         }
-        .onChange(of: queryText) {
-            queryMessage = nil
-            syncMenuBarLens()
+        .searchable(text: $queryText, prompt: searchPrompt)
+        .searchSuggestions {
+            ForEach(SearchQuery.suggestions(for: queryText)) { suggestion in
+                HStack {
+                    Text(suggestion.label)
+                    Spacer()
+                    Text(suggestion.detail)
+                        .foregroundStyle(.secondary)
+                }
+                .searchCompletion(suggestion.completion)
+            }
         }
-        .onChange(of: model.deepLinkSelection) { applyDeepLinkSelection() }
+        .onSubmit(of: .search, resolveSearchText)
+        .navigationTitle("nCompHunt")
+        #if os(iOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+        .toolbar {
+            #if os(macOS)
+            ToolbarItem(placement: .navigation) {
+                Picker("Layout", selection: $style) {
+                    ForEach(ListStyle.allCases) { style in
+                        Label(style.label, systemImage: style.systemImage)
+                            .tag(style)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .help("Switch between the list and the table")
+            }
+            #endif
+            // One group, not three items across two placements. Mixing
+            // .primaryAction with .secondaryAction let the system put the
+            // view-options menu in its own region, so it floated alone in
+            // the middle of the title bar with uneven gaps either side.
+            // Buttons that belong together have to be declared together.
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button("Dashboard", systemImage: "chart.bar") {
+                    #if os(macOS)
+                    openWindow(id: CompHuntRoot.dashboardWindowID)
+                    #else
+                    dashboardPresented = true
+                    #endif
+                }
+                .help("See the shape of your list and your pipeline")
+
+                Menu {
+                    Picker("Sort by", selection: $sort) {
+                        ForEach(ListSort.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                    Picker("Group by", selection: $grouping) {
+                        ForEach(ListGrouping.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                    // The table is flat by design; a disabled picker says
+                    // so, where an ignored one would just lie.
+                    .disabled(groupingUnavailable)
+                    Picker("Region", selection: regionSelection) {
+                        ForEach(RegionFilter.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.inline)
+                } label: {
+                    Label("View options", systemImage: regionSelection.wrappedValue.isActive
+                        ? "line.3.horizontal.decrease.circle.fill"
+                        : "line.3.horizontal.decrease.circle")
+                }
+                .help("Sort, group, and filter by region")
+
+                if isResolving {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button("Ask", systemImage: "sparkles", action: resolveSearchText)
+                        .disabled(
+                            generator.unavailableReason != nil
+                                || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .help(generator.unavailableReason
+                            ?? "Turn what you typed into filters")
+                }
+
+                if model.isRefreshing {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button("Refresh", systemImage: "arrow.clockwise") {
+                        Task { await model.refresh() }
+                    }
+                }
+            }
+            #if os(iOS)
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Settings", systemImage: "gear") { settingsPresented = true }
+            }
+            #endif
+        }
     }
 
     // MARK: Controls that write into the query

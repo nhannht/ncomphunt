@@ -2,15 +2,18 @@ import CompHuntKit
 import SwiftData
 import SwiftUI
 
-/// The results surface under the toolbar: chips, rows, and - on the desktop -
-/// the detail column or table that gives a wide window's width a job.
+/// The results surface under the toolbar: rows, and - on the desktop - the
+/// detail column or table that gives a wide window's width a job.
 ///
 /// Layout per platform:
 /// - iOS: chips over a single list, rows tap-to-expand in place.
-/// - macOS `.list`: a split - chips and the list in a ~420pt column, the
-///   selected competition's full record filling the rest.
-/// - macOS `.table`: chips over a full-width sortable table, details in an
-///   inspector.
+/// - macOS `.list`: a split - the list in a ~420pt column, the selected
+///   competition's full record filling the rest.
+/// - macOS `.table`: a full-width sortable table, details in an inspector.
+///
+/// The chip row is the phone's category filter only. The desktop filters from
+/// the sidebar column in `MainWindow`, so `categorySelection` and `markedOnly`
+/// are read here on iOS alone.
 /// One selection value drives all three; the styles are different projections
 /// of the same state, never different states.
 struct CompetitionListPane: View {
@@ -69,21 +72,20 @@ struct CompetitionListPane: View {
 
     @ViewBuilder
     private func layout(rows: [Competition]) -> some View {
+        // No chip row on the desktop: the category filter is the sidebar
+        // column, and carrying both would be two controls writing the same
+        // value, which is the disagreement this app keeps designing out.
         #if os(macOS)
         switch style {
         case .list:
             HSplitView {
-                VStack(spacing: 0) {
-                    CategoryChipRow(selection: $categorySelection, markedOnly: $markedOnly)
-                    listOrEmpty(rows: rows)
-                }
-                .frame(minWidth: 320, idealWidth: 420, maxWidth: 560)
+                listOrEmpty(rows: rows)
+                    .frame(minWidth: 320, idealWidth: 420, maxWidth: 560)
                 CompetitionDetailPane(competition: selected)
                     .frame(minWidth: 360, maxWidth: .infinity, maxHeight: .infinity)
             }
         case .table:
-            VStack(spacing: 0) {
-                CategoryChipRow(selection: $categorySelection, markedOnly: $markedOnly)
+            Group {
                 if rows.isEmpty {
                     emptyState
                 } else {

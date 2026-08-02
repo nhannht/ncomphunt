@@ -100,17 +100,25 @@ map in the same turn.
   EventKit calendar sync; the sync itself is app-layer in
   `App/Sources/CalendarSyncService.swift`, since EventKit is unavailable to the
   sandboxed library target), `CategoryStyle` (the ONE category color/short-label
-  mapping + `CategoryDot`; app rows, chip row, and widget all read it - never
-  hardcode a category color in a view again), `ReminderPlan` + `DigestPlan` (the
+  mapping + `CategoryDot`, whose `size` defaults to the 6pt inline hint and goes
+  to 10pt in the sidebar where the dot IS the identity; app rows, sidebar, chip
+  row and widget all read it - never hardcode a category color in a view
+  again), `ReminderPlan` + `DigestPlan` (the
   two notification planners, see the notification model below), `DashboardStats`
   (all dashboard counting; the view renders and derives nothing)
-- `App/` - SwiftUI app: main window is a `NavigationStack` (the three-pane
-  NavigationSplitView is gone): `CategoryChipRow` above the list writes the
-  category into the query string, one merged sort/group/region toolbar menu, an
+- `App/` - SwiftUI app: `MainWindow.shell` is the one place the platforms
+  differ. macOS is a two-column `NavigationSplitView` whose sidebar is
+  `CategorySidebar`; iOS is a `NavigationStack` and keeps `CategoryChipRow`
+  above the list, which is the phone's category filter only. Both write the
+  category into the query string rather than holding their own state. The
+  sidebar marks each kind with a `CategoryDot`, never an SF Symbol: ten glyphs
+  in a column read as ten unrelated pictures, and the dot is the marker every
+  other surface already uses. `CompetitionFilter.systemImage` survives with no
+  caller. Then one merged sort/group/region toolbar menu, an
   "Ask" sparkles button (`NLFilterGenerator`, disabled with a reason when Apple
   Intelligence is off), per-row context menu = `CompetitionActionsMenu`.
-  Inside that stack the layout is per-platform. iOS is a single panel and rows
-  tap-to-expand in place (`CompetitionExpandedView` inline, no push). macOS has
+  Inside the detail column the layout is per-platform. iOS is a single panel and
+  rows tap-to-expand in place (`CompetitionExpandedView` inline, no push). macOS has
   two styles behind a toolbar toggle (`ListStyle` @AppStorage `list.style`):
   `list` is an `HSplitView` of `CompetitionListPane` + `CompetitionDetailPane`,
   `table` is a full-width sortable `CompetitionTablePane` with the detail in an
@@ -118,8 +126,9 @@ map in the same turn.
   widget deep link - different projections of one state, never separate states,
   and table header sorting writes the same `ListSort` the toolbar menu reads.
   Group by is disabled in table style because a table is flat by design.
-  A leading "Marked" chip (divided off from the category chips - it is a second
-  axis, not a sixth category) writes `status:any`. A Dashboard toolbar button
+  A leading "Marked" row, sectioned off above the kinds on macOS and divided off
+  from the chips on iOS because it is a second axis and not another kind, writes
+  `status:any`. A Dashboard toolbar button
   opens `DashboardView`, its own `Window` scene on macOS and a sheet on iOS,
   the same split Settings uses.
   Plus MenuBarExtra +
