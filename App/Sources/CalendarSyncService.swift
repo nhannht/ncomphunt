@@ -160,6 +160,36 @@ final class CalendarSyncService {
         event.alarms = [EKAlarm(relativeOffset: plan.alarmOffset)]
     }
 
+    // MARK: busy windows (COMP-18)
+
+    /// The user's committed time inside a window, as the plain intervals
+    /// `FitScorer` consumes - EventKit never crosses into the kit.
+    ///
+    /// Read-only and prompt-free: it rides on access already granted (by the
+    /// sync opt-in or an earlier grant) and returns empty otherwise, so
+    /// conflict detection degrades to neutral with no error surface. Excludes
+    /// the nCompHunt calendar itself - the events WE write for competitions
+    /// must never read as conflicts with their own competitions - plus
+    /// all-day events and anything the user marked free, which reserve no
+    /// working hours.
+    func busyIntervals(from start: Date, to end: Date) -> [DateInterval] {
+        guard authorization == .fullAccess else { return [] }
+        let ownID = UserDefaults.standard.string(forKey: Key.calendarID)
+        let predicate = store.predicateForEvents(
+            withStart: start, end: end, calendars: nil)
+        return store.events(matching: predicate).compactMap { event in
+            guard !event.isAllDay, event.availability != .free else { return nil }
+            if let calendar = event.calendar,
+               calendar.calendarIdentifier == ownID
+                   || calendar.title == calendarTitle {
+                return nil
+            }
+            guard let eventStart = event.startDate, let eventEnd = event.endDate,
+                  eventEnd > eventStart else { return nil }
+            return DateInterval(start: eventStart, end: eventEnd)
+        }
+    }
+
     // MARK: calendar lifecycle
 
     /// The dedicated calendar, created on first use in the user's default source

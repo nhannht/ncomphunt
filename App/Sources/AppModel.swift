@@ -1,4 +1,5 @@
 import CompHuntKit
+import EventKit
 import Foundation
 import SwiftData
 import SwiftUI
@@ -45,6 +46,8 @@ final class AppModel {
 
     private var autoRefreshTask: Task<Void, Never>?
     private var countdownTask: Task<Void, Never>?
+    /// Held so the `.EKEventStoreChanged` observer lives as long as the model.
+    private var calendarObserver: (any NSObjectProtocol)?
 
     /// The contest keys in the last snapshot written to the widget. Used to
     /// reload widget timelines only when the LIST changes, not every minute.
@@ -76,6 +79,10 @@ final class AppModel {
         // means "this install has never refreshed", not "this launch has not".
         let stored = UserDefaults.standard.double(forKey: Self.lastRefreshKey)
         if stored > 0 { lastRefresh = Date(timeIntervalSince1970: stored) }
+        // Busy windows BEFORE the countdown starts, so the first menu-bar
+        // recompute already ranks against the real calendar.
+        refreshBusyIntervals()
+        watchCalendarChanges()
         startMenuBarCountdown()
     }
 
@@ -105,6 +112,7 @@ final class AppModel {
         // interrupting on each one that found something was the app talking
         // about competitions nobody had asked about. What arrived is reported
         // once, in the morning digest, off `firstSeen`.
+        refreshBusyIntervals()
         recomputeMenuBar()
         let all = allCompetitions()
         await CalendarSyncService.shared.syncIfEnabled(competitions: all)
@@ -272,10 +280,40 @@ extension AppModel {
             Task {
                 calendarSyncEnabled = await CalendarSyncService.shared.enable(
                     with: allCompetitions())
+                // Enabling is the moment access may have just been granted,
+                // so the first busy read that can succeed happens now.
+                refreshBusyIntervals()
+                recomputeMenuBar()
             }
         } else {
             CalendarSyncService.shared.disable()
             calendarSyncEnabled = false
+        }
+    }
+
+    /// Read the calendar's busy windows over the scoring horizon and adopt
+    /// them into `FitContext`, so every fit score sees real conflicts
+    /// (COMP-18). Safe to call anytime: without calendar access the read is
+    /// empty, which scores identically to a free calendar - degradation is
+    /// silence, never an error surface.
+    func refreshBusyIntervals(now: Date = .now) {
+        FitContext.adoptBusy(CalendarSyncService.shared.busyIntervals(
+            from: now, to: now.addingTimeInterval(90 * 86_400)))
+    }
+
+    /// Re-rank when the system calendar database changes, so an event added
+    /// in Calendar.app moves fit scores without waiting for a refresh. Our
+    /// own sync writes fire this too - harmless, because the busy read
+    /// excludes the nCompHunt calendar.
+    private func watchCalendarChanges() {
+        guard calendarObserver == nil else { return }
+        calendarObserver = NotificationCenter.default.addObserver(
+            forName: .EKEventStoreChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.refreshBusyIntervals()
+                self?.recomputeMenuBar()
+            }
         }
     }
 
