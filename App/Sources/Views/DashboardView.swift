@@ -11,6 +11,11 @@ import SwiftUI
 /// different question each time you looked.
 struct DashboardView: View {
     @Query private var competitions: [Competition]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// False for the first frame so the bars grow into place on appear;
+    /// under Reduce Motion the growth is skipped and they render full-width.
+    @State private var revealed = false
 
     private var stats: DashboardStats { DashboardStats(for: competitions) }
 
@@ -37,6 +42,7 @@ struct DashboardView: View {
             .frame(maxWidth: .infinity)
         }
         .navigationTitle("Dashboard")
+        .task { revealed = true }
     }
 
     // MARK: totals
@@ -65,6 +71,8 @@ struct DashboardView: View {
             Text("\(value)")
                 .font(.title2.weight(.semibold))
                 .foregroundStyle(tint)
+                .contentTransition(.numericText())
+                .animation(Motion.state, value: value)
             Text(label)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
@@ -139,11 +147,16 @@ struct DashboardView: View {
                     .fill(tint.opacity(count == 0 ? 0.15 : 0.75))
                     .frame(
                         // A zero row keeps a hairline so the funnel still reads
-                        // as a row rather than as a gap.
-                        width: max(geometry.size.width
-                            * CGFloat(count) / CGFloat(scale), 2),
+                        // as a row rather than as a gap. Bars grow from that
+                        // hairline on first appear and re-flow on data change.
+                        width: revealed
+                            ? max(geometry.size.width
+                                * CGFloat(count) / CGFloat(scale), 2)
+                            : 2,
                         height: 12)
                     .frame(height: geometry.size.height, alignment: .center)
+                    .animation(reduceMotion ? nil : Motion.layout, value: revealed)
+                    .animation(reduceMotion ? nil : Motion.layout, value: count)
             }
             .frame(height: 16)
 
@@ -151,6 +164,8 @@ struct DashboardView: View {
                 .font(.callout.monospacedDigit())
                 .foregroundStyle(count == 0 ? .tertiary : .secondary)
                 .frame(width: 38, alignment: .trailing)
+                .contentTransition(.numericText())
+                .animation(Motion.state, value: count)
         }
     }
 
