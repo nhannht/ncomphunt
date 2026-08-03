@@ -10,8 +10,12 @@ struct CompetitionExpandedView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Text(competition.category.shortLabel)
-                    .foregroundStyle(competition.category.tint)
+                // Every tag, not just the leading one - same as the desktop
+                // detail pane.
+                ForEach(competition.shownCategoryTags, id: \.self) { tag in
+                    Text(tag.shortLabel)
+                        .foregroundStyle(tag.tint)
+                }
                 if competition.region == .vietnam {
                     Text("Vietnam").foregroundStyle(.red)
                 }

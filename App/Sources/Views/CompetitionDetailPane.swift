@@ -46,9 +46,13 @@ struct CompetitionDetailPane: View {
                         .fixedSize()
                     }
                     HStack(spacing: 6) {
-                        CategoryDot(competition.category)
-                        Text(competition.category.shortLabel)
-                            .foregroundStyle(competition.category.tint)
+                        // Every tag, not just the leading one: a contest that
+                        // is writing AND media says so here.
+                        ForEach(competition.shownCategoryTags, id: \.self) { tag in
+                            CategoryDot(tag)
+                            Text(tag.shortLabel)
+                                .foregroundStyle(tag.tint)
+                        }
                         if competition.region == .vietnam {
                             Text("Vietnam").foregroundStyle(.red)
                         }

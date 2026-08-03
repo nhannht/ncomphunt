@@ -38,8 +38,12 @@ struct CompetitionTablePane: View {
             TableColumn("Category") { competition in
                 cell(competition) {
                     HStack(spacing: 4) {
-                        Text(competition.category.shortLabel)
-                            .foregroundStyle(competition.category.tint)
+                        // Same full tag set as the list row; sorting still
+                        // uses the single leading category.
+                        ForEach(competition.shownCategoryTags, id: \.self) { tag in
+                            Text(tag.shortLabel)
+                                .foregroundStyle(tag.tint)
+                        }
                         if competition.region == .vietnam {
                             Text("VN").foregroundStyle(.red)
                         }

@@ -28,8 +28,14 @@ struct CompetitionRow: View {
                     }
                 }
                 HStack(spacing: 4) {
-                    Text(competition.category.shortLabel)
-                        .foregroundStyle(competition.category.tint)
+                    // Every tag, not just the leading one. The identity dot on
+                    // the left stays single - the lead tag IS the row's colour -
+                    // but hiding the rest until the detail pane made the whole
+                    // feature undiscoverable in the surface people scan.
+                    ForEach(competition.shownCategoryTags, id: \.self) { tag in
+                        Text(tag.shortLabel)
+                            .foregroundStyle(tag.tint)
+                    }
                     if competition.region == .vietnam {
                         Text("VN")
                             .foregroundStyle(.red)
