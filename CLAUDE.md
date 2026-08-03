@@ -124,7 +124,11 @@ map in the same turn.
   mapping + `CategoryDot`, whose `size` defaults to the 6pt inline hint and goes
   to 10pt in the sidebar where the dot IS the identity; app rows, sidebar, chip
   row and widget all read it - never hardcode a category color in a view
-  again), `ReminderPlan` + `DigestPlan` (the
+  again), `TextLanguage` + `TranslationPair` (which language is a row's text
+  in and should this reader be offered a translation - reader-relative
+  direction, never hardcoded vi->en, nil when languages match or detection is
+  unsure; the only NaturalLanguage capability that works for Vietnamese),
+  `ReminderPlan` + `DigestPlan` (the
   two notification planners, see the notification model below), `DashboardStats`
   (all dashboard counting; the view renders and derives nothing)
 - `App/` - SwiftUI app: `MainWindow.shell` is the one place the platforms
@@ -147,6 +151,23 @@ map in the same turn.
   widget deep link - different projections of one state, never separate states,
   and table header sorting writes the same `ListSort` the toolbar menu reads.
   Group by is disabled in table style because a table is flat by design.
+  Both detail surfaces translate automatically (COMP-28): a row whose
+  detected language differs from the user's reading language opens already
+  translated, original one click away behind the same Show Original toggle.
+  The reading language is a Settings > Translation picker (`translation.language`,
+  default English - the index's lingua franca, NOT the system locale, so
+  out-of-the-box behavior is identical on every machine), auto is a toggle
+  (`translation.auto`, default on; off keeps a manual Translate button). The
+  picker lists `LanguageAvailability.supportedLanguages`, so it can never
+  offer a pair the OS would refuse. `TranslateControl.swift` hosts the
+  Translation-framework session (`@preconcurrency import` here and in
+  SettingsView - the SDK leaves `TranslationSession`/`LanguageAvailability`
+  un-annotated for Sendable). Display-only and never persisted, so a refresh
+  rewriting source text cannot strand a stale translation; nothing appears at
+  all when languages already match or the pair is unsupported. The expanded
+  view adds the translated title as its own line because the collapsed row
+  above keeps the original as heading. List rows stay original on purpose -
+  titles are identifiers there.
   A leading "Marked" row, sectioned off above the kinds on macOS and divided off
   from the chips on iOS because it is a second axis and not another kind, writes
   `status:any`. A Dashboard toolbar button

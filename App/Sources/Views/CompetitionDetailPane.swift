@@ -1,5 +1,6 @@
 #if os(macOS)
 import CompHuntKit
+import SwiftData
 import SwiftUI
 
 /// The right-hand pane of the desktop split, and the table style's inspector:
@@ -8,6 +9,15 @@ import SwiftUI
 /// than a strip cramped against the divider.
 struct CompetitionDetailPane: View {
     let competition: Competition?
+
+    // Display-only translation of the selected row (COMP-28). Reset whenever
+    // the selection moves, so row A's translation can never dress row B.
+    @State private var translation = TranslationState()
+    @State private var translationPair: TranslationPair?
+    @AppStorage(TranslationPreferences.autoKey)
+    private var autoTranslate = true
+    @AppStorage(TranslationPreferences.languageKey)
+    private var readingLanguage = TranslationPreferences.defaultLanguage
 
     var body: some View {
         if let competition {
@@ -25,7 +35,7 @@ struct CompetitionDetailPane: View {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline) {
-                        Text(competition.title)
+                        Text(translation.title(original: competition.title))
                             .font(.title2.bold())
                             .textSelection(.enabled)
                         Spacer()
@@ -62,6 +72,7 @@ struct CompetitionDetailPane: View {
                             Text("tracked \(issueID)")
                                 .foregroundStyle(.green)
                         }
+                        TranslateButton(state: $translation, pair: translationPair)
                     }
                     .font(.caption)
                 }
@@ -102,7 +113,7 @@ struct CompetitionDetailPane: View {
 
                 if !competition.details.isEmpty {
                     Divider()
-                    Text(competition.details)
+                    Text(translation.details(original: competition.details))
                         .font(.body)
                         .textSelection(.enabled)
                 }
@@ -110,6 +121,20 @@ struct CompetitionDetailPane: View {
             .padding(20)
             .frame(maxWidth: 680, alignment: .leading)
             .frame(maxWidth: .infinity)
+        }
+        .translationEffect($translation,
+                           title: competition.title,
+                           details: competition.details)
+        .task(id: TranslationTaskKey(id: competition.persistentModelID,
+                                     language: readingLanguage,
+                                     auto: autoTranslate)) {
+            translation.reset()
+            translationPair = await TranslationOffer.pair(
+                title: competition.title, details: competition.details,
+                reader: Locale.Language(identifier: readingLanguage))
+            if autoTranslate {
+                translation.arm(for: translationPair)
+            }
         }
     }
 

@@ -1,4 +1,5 @@
 import CompHuntKit
+import SwiftData
 import SwiftUI
 
 /// The tail of an expanded row: everything the collapsed row does not already
@@ -6,6 +7,16 @@ import SwiftUI
 /// repeated title - the row above stays visible as the heading.
 struct CompetitionExpandedView: View {
     let competition: Competition
+
+    // Display-only translation (COMP-28). The collapsed row above keeps the
+    // original title as the heading, so the translated title gets its own
+    // line inside the expansion instead of replacing it.
+    @State private var translation = TranslationState()
+    @State private var translationPair: TranslationPair?
+    @AppStorage(TranslationPreferences.autoKey)
+    private var autoTranslate = true
+    @AppStorage(TranslationPreferences.languageKey)
+    private var readingLanguage = TranslationPreferences.defaultLanguage
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -25,6 +36,7 @@ struct CompetitionExpandedView: View {
                     Text("tracked \(issueID)")
                         .foregroundStyle(.green)
                 }
+                TranslateButton(state: $translation, pair: translationPair)
                 Spacer()
                 // Same reasoning as the desktop pane: the mark is the point of
                 // the app, so it sits on the surface, not inside a menu.
@@ -44,6 +56,12 @@ struct CompetitionExpandedView: View {
                 .fixedSize()
             }
             .font(.caption2)
+
+            if translation.showingTranslation, let translatedTitle = translation.translatedTitle {
+                Text(translatedTitle)
+                    .font(.footnote.weight(.semibold))
+                    .textSelection(.enabled)
+            }
 
             if competition.isMarked {
                 StatusSegments(competition: competition)
@@ -80,13 +98,27 @@ struct CompetitionExpandedView: View {
             }
 
             if !competition.details.isEmpty {
-                Text(competition.details)
+                Text(translation.details(original: competition.details))
                     .font(.footnote)
                     .textSelection(.enabled)
             }
         }
         .padding(.leading, 14)
         .padding(.bottom, 4)
+        .translationEffect($translation,
+                           title: competition.title,
+                           details: competition.details)
+        .task(id: TranslationTaskKey(id: competition.persistentModelID,
+                                     language: readingLanguage,
+                                     auto: autoTranslate)) {
+            translation.reset()
+            translationPair = await TranslationOffer.pair(
+                title: competition.title, details: competition.details,
+                reader: Locale.Language(identifier: readingLanguage))
+            if autoTranslate {
+                translation.arm(for: translationPair)
+            }
+        }
     }
 
     @ViewBuilder
