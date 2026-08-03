@@ -62,7 +62,7 @@ import Testing
 
     private func openCurrentStore(at url: URL) throws -> ModelContext {
         let container = try ModelContainer(
-            for: Competition.self,
+            for: Competition.self, UserProfile.self,
             migrationPlan: CompetitionMigrationPlan.self,
             configurations: ModelConfiguration(url: url))
         return ModelContext(container)
@@ -137,6 +137,29 @@ import Testing
             #expect(rows.count == 2)
             #expect(rows.allSatisfy { $0.statusRaw == "interested" })
             #expect(rows.allSatisfy { $0.categoryTagsRaw.isEmpty })
+        }
+    }
+
+    /// V4 adds a whole model rather than a column: a shipped store has to
+    /// walk into it with its competitions intact and the new table usable.
+    @Test func aShippedStoreCrossesIntoV4AndCanHoldAProfile() throws {
+        try withTemporaryStore { url in
+            try seedV2Store(at: url)
+
+            let context = try openCurrentStore(at: url)
+            let rows = try context.fetch(FetchDescriptor<Competition>())
+            #expect(rows.count == 2)
+
+            let profile = try UserProfile.fetchOrCreate(in: context)
+            profile.interests = [.ctf: 0.8]
+            profile.cfRating = 1450
+            try context.save()
+
+            let reopened = try openCurrentStore(at: url)
+            let kept = try #require(
+                try reopened.fetch(FetchDescriptor<UserProfile>()).first)
+            #expect(kept.interests == [.ctf: 0.8])
+            #expect(kept.cfRating == 1450)
         }
     }
 
