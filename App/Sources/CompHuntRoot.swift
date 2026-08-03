@@ -68,6 +68,10 @@ struct CompHuntRoot: Scene {
             SettingsView()
                 .environment(model)
         }
+        // The Profile tab reads and writes the UserProfile row via @Query,
+        // unlike the other tabs (Keychain/AppStorage), so this scene needs
+        // the container the rest of the app already carries.
+        .modelContainer(model.container)
         #endif
     }
 }

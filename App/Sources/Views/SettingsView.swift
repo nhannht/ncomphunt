@@ -2,6 +2,7 @@
 import AppKit
 #endif
 import CompHuntKit
+import SwiftData
 import SwiftUI
 // Same Sendable-annotation gap as TranslateControl.swift: LanguageAvailability
 // is non-Sendable in the macOS 26 SDK and its async members are nonisolated.
@@ -20,6 +21,9 @@ struct SettingsView: View {
     var body: some View {
         #if os(macOS)
         TabView {
+            Tab("Profile", systemImage: "person.crop.circle") {
+                tabForm { ProfileSettings() }
+            }
             Tab("Sources", systemImage: "antenna.radiowaves.left.and.right") {
                 tabForm { SourcesSettings() }
             }
@@ -41,6 +45,7 @@ struct SettingsView: View {
         }
         #else
         Form {
+            ProfileSettings()
             SourcesSettings()
             APIKeysSettings()
             YouTrackSettings()
@@ -63,6 +68,185 @@ struct SettingsView: View {
             .frame(width: 460)
     }
     #endif
+}
+
+// MARK: - Profile
+
+/// The person the fit score is scored for (COMP-16). Every control writes
+/// the single UserProfile row; the main window observes its fingerprint and
+/// re-ranks without a relaunch.
+private struct ProfileSettings: View {
+    @Environment(\.modelContext) private var context
+    @Query private var profiles: [UserProfile]
+    @State private var notice: String?
+    @State private var fetchingRating = false
+
+    /// Sliders skip `.other`: "unclassified" is not an interest anyone holds.
+    private let categories = CompetitionCategory.allCases.filter { $0 != .other }
+
+    var body: some View {
+        Section("Interests") {
+            if let profile = profiles.first {
+                ForEach(categories, id: \.self) { category in
+                    LabeledContent(category.displayName) {
+                        Slider(value: weightBinding(category, profile), in: 0...1)
+                            .frame(maxWidth: 200)
+                    }
+                }
+                HStack {
+                    Button("Suggest from my marks") { suggest(into: profile) }
+                    if let notice {
+                        Text(notice)
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                    Spacer()
+                }
+                .task(id: notice) {
+                    guard notice != nil else { return }
+                    try? await Task.sleep(for: .seconds(2.5))
+                    notice = nil
+                }
+                Text("Every mark votes for its categories - advancing one in the pipeline is a stronger vote, dropping one counts against. Suggestions overwrite only the categories your marks mention; nothing changes until you press the button.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        Section("Codeforces") {
+            if let profile = profiles.first {
+                TextField("Handle", text: handleBinding(profile),
+                          prompt: Text("tourist"))
+                LabeledContent("Rating") {
+                    if let rating = profile.cfRating {
+                        Text(rating == 0 ? "unrated" : "\(rating)")
+                    } else {
+                        Text("not fetched").foregroundStyle(.secondary)
+                    }
+                }
+                HStack {
+                    if fetchingRating {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button("Update rating") { updateRating(profile) }
+                            .disabled(profile.cfHandle.trimmingCharacters(
+                                in: .whitespacesAndNewlines).isEmpty)
+                    }
+                    Spacer()
+                }
+                Text("Keyless lookup, refreshed once a day with the sources. It lets the score tell a Div 2 round you should enter from a Div 1 round you cannot.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        Section("Fit") {
+            if let profile = profiles.first {
+                Stepper(value: hoursBinding(profile), in: 1...80, step: 1) {
+                    LabeledContent("Hours a week",
+                                   value: "\(Int(profile.weeklyHours))h")
+                }
+                TextField("Prize floor (USD, 0 = off)",
+                          value: floorBinding(profile), format: .number)
+                Picker("Preferred region", selection: regionBinding(profile)) {
+                    Text("Any").tag("")
+                    ForEach(Region.allCases, id: \.rawValue) { region in
+                        Text(region.displayName).tag(region.rawValue)
+                    }
+                }
+                Text("These feed the Best fit sort. Anything left alone stays neutral - an untouched profile still ranks by prize density and deadlines.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .task { ensureProfile() }
+    }
+
+    /// The single row, created on first visit so every control has a target.
+    private func ensureProfile() {
+        guard profiles.isEmpty else { return }
+        _ = try? UserProfile.fetchOrCreate(in: context)
+    }
+
+    private func suggest(into profile: UserProfile) {
+        let all = (try? context.fetch(FetchDescriptor<Competition>())) ?? []
+        let suggested = UserProfile.suggestedInterests(from: all)
+        guard !suggested.isEmpty else {
+            notice = "No marks to learn from yet"
+            return
+        }
+        // Merge, never replace: categories the marks said nothing about
+        // keep whatever the person set by hand.
+        var weights = profile.interests
+        for (category, weight) in suggested { weights[category] = weight }
+        profile.interests = weights
+        try? context.save()
+        let marked = all.count(where: { $0.isMarked })
+        notice = "Suggested from \(marked) marked"
+    }
+
+    private func updateRating(_ profile: UserProfile) {
+        fetchingRating = true
+        Task {
+            defer { fetchingRating = false }
+            do {
+                let rating = try await CodeforcesRating.fetch(
+                    handle: profile.cfHandle)
+                profile.cfRating = rating
+                profile.cfRatingUpdated = .now
+                try? context.save()
+            } catch {
+                notice = "Lookup failed"
+            }
+        }
+    }
+
+    private func weightBinding(
+        _ category: CompetitionCategory, _ profile: UserProfile
+    ) -> Binding<Double> {
+        Binding {
+            profile.interests[category] ?? 0.5
+        } set: { value in
+            var weights = profile.interests
+            weights[category] = value
+            profile.interests = weights
+            try? context.save()
+        }
+    }
+
+    private func handleBinding(_ profile: UserProfile) -> Binding<String> {
+        Binding {
+            profile.cfHandle
+        } set: { value in
+            profile.cfHandle = value
+            try? context.save()
+        }
+    }
+
+    private func hoursBinding(_ profile: UserProfile) -> Binding<Double> {
+        Binding {
+            profile.weeklyHours
+        } set: { value in
+            profile.weeklyHours = value
+            try? context.save()
+        }
+    }
+
+    private func floorBinding(_ profile: UserProfile) -> Binding<Double> {
+        Binding {
+            profile.prizeFloorUSD
+        } set: { value in
+            profile.prizeFloorUSD = max(0, value)
+            try? context.save()
+        }
+    }
+
+    private func regionBinding(_ profile: UserProfile) -> Binding<String> {
+        Binding {
+            profile.preferredRegionRaw
+        } set: { value in
+            profile.preferredRegionRaw = value
+            try? context.save()
+        }
+    }
 }
 
 // MARK: - Sources

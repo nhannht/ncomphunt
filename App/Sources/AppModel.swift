@@ -61,7 +61,7 @@ final class AppModel {
             // The migration plan is what lets a store written by v0.1-v0.3 open
             // at all after a property is added. Without it SwiftData traps.
             container = try ModelContainer(
-                for: Competition.self,
+                for: Competition.self, UserProfile.self,
                 migrationPlan: CompetitionMigrationPlan.self,
                 configurations: config)
         } catch {
@@ -69,7 +69,8 @@ final class AppModel {
             startupError = "Persistent store unavailable, using in-memory cache: \(error)"
             let config = ModelConfiguration(isStoredInMemoryOnly: true)
             // A memory-only container cannot fail to open.
-            container = try! ModelContainer(for: Competition.self, configurations: config)
+            container = try! ModelContainer(
+                for: Competition.self, UserProfile.self, configurations: config)
         }
         // Adopt the persisted value BEFORE any refresh runs, so `isInitialSeed`
         // means "this install has never refreshed", not "this launch has not".
@@ -109,6 +110,25 @@ final class AppModel {
         await CalendarSyncService.shared.syncIfEnabled(competitions: all)
         await ReminderScheduler.shared.reschedule(competitions: all)
         adoptReminderState()
+        await refreshCodeforcesRating()
+    }
+
+    /// Refreshes the profile's cached Codeforces rating on the same cycle as
+    /// the sources, at most once a day - never on read (COMP-17). Failure is
+    /// silently non-fatal: the cached rating stays, the FitScorer rating
+    /// component degrades to neutral, and no refresh is ever killed by it.
+    private func refreshCodeforcesRating(now: Date = .now) async {
+        guard let profile = try? container.mainContext
+            .fetch(FetchDescriptor<UserProfile>()).first else { return }
+        let handle = profile.cfHandle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !handle.isEmpty else { return }
+        if let updated = profile.cfRatingUpdated,
+           now.timeIntervalSince(updated) < 24 * 3600 { return }
+        guard let rating = try? await CodeforcesRating.fetch(handle: handle)
+        else { return }
+        profile.cfRating = rating
+        profile.cfRatingUpdated = now
+        try? container.mainContext.save()
     }
 
     /// Every persisted competition, or an empty array if the store read fails.
