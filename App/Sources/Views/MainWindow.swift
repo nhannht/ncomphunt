@@ -31,9 +31,13 @@ struct MainWindow: View {
     @AppStorage("list.filter") private var menuBarCategory: CompetitionFilter = .all
     @AppStorage("list.region") private var menuBarRegion: RegionFilter = .all
 
-    @State private var isResolving = false
-    @State private var queryMessage: String?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The on-device model's reading of a sentence in the search field,
+    /// OFFERED as a suggestion row rather than applied. nil while the text is
+    /// token syntax, too short, or the model found nothing in it - so the row
+    /// simply never exists instead of a failure needing explanation.
+    @State private var nlSuggestion: SearchQuery?
+    @State private var nlThinking = false
+    @State private var nlTask: Task<Void, Never>?
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
@@ -59,8 +63,8 @@ struct MainWindow: View {
                 applyDeepLinkSelection()
             }
             .onChange(of: queryText) {
-                queryMessage = nil
                 syncMenuBarLens()
+                scheduleNLSuggestion()
             }
             // Whatever changed the sort - menu pick or a different column's
             // header - the new sort starts at its canonical direction.
@@ -119,15 +123,6 @@ struct MainWindow: View {
 
     private var content: some View {
         VStack(spacing: 0) {
-            if let queryMessage {
-                Text(queryMessage)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.bottom, 4)
-                    .transition(Motion.reveal(reduced: reduceMotion))
-            }
             CompetitionListPane(
                 query: query, sort: $sort, sortFlipped: $sortFlipped,
                 grouping: grouping, style: style,
@@ -136,9 +131,33 @@ struct MainWindow: View {
                 onRelax: relax, onClear: clearFilters,
                 selectedID: $selectedID)
         }
-        .animation(Motion.state, value: queryMessage)
         .searchable(text: $queryText, prompt: searchPrompt)
         .searchSuggestions {
+            // The model's reading leads the dropdown: a tappable offer showing
+            // readable filters, never an unasked rewrite of the typed text.
+            // Accepting it writes `serialized()` through the one query path.
+            if let nlSuggestion {
+                Label {
+                    HStack {
+                        Text(nlSummary(nlSuggestion))
+                        Spacer()
+                        Text("AI filter")
+                            .foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(.tint)
+                }
+                .searchCompletion(nlSuggestion.serialized())
+            } else if nlThinking {
+                Label {
+                    Text("Interpreting...")
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "sparkles")
+                        .symbolEffect(.variableColor.iterative, isActive: true)
+                }
+            }
             ForEach(SearchQuery.suggestions(for: queryText)) { suggestion in
                 HStack {
                     Text(suggestion.label)
@@ -149,7 +168,6 @@ struct MainWindow: View {
                 .searchCompletion(suggestion.completion)
             }
         }
-        .onSubmit(of: .search, resolveSearchText)
         .navigationTitle("nCompHunt")
         #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -205,19 +223,8 @@ struct MainWindow: View {
                 }
                 .help("Sort, group, and filter by region")
 
-                // The button IS the progress indicator: the sparkles shimmer
-                // while Apple Intelligence resolves, instead of the control
-                // being swapped out from under the pointer.
-                Button("Ask", systemImage: "sparkles", action: resolveSearchText)
-                    .symbolEffect(.variableColor.iterative, isActive: isResolving)
-                    .disabled(
-                        isResolving
-                            || generator.unavailableReason != nil
-                            || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .help(generator.unavailableReason
-                        ?? "Turn what you typed into filters")
-
-                // Same idea: the arrow spins in place while a refresh runs.
+                // The arrow spins in place while a refresh runs; the control
+                // never vanishes from under the pointer.
                 Button("Refresh", systemImage: "arrow.clockwise") {
                     Task { await model.refresh() }
                 }
@@ -318,36 +325,53 @@ struct MainWindow: View {
 
     private var searchPrompt: String {
         generator.unavailableReason == nil
-            ? "Search, or describe what you want and press Return"
+            ? "Search, or describe what you want"
             : "Search, or filter with category:"
+    }
+
+    /// The suggestion row's readable form of what the model understood -
+    /// display names joined with middle dots, never raw token syntax.
+    private func nlSummary(_ resolved: SearchQuery) -> String {
+        var parts: [String] = []
+        parts += CompetitionCategory.allCases.filter(resolved.categories.contains)
+            .map(\.displayName)
+        parts += Region.allCases.filter(resolved.regions.contains)
+            .map(\.displayName)
+        parts += SourceID.allCases.filter(resolved.sources.contains)
+            .map(\.displayName)
+        if resolved.isMarkedOnly { parts.append("Marked") }
+        if let days = resolved.withinDays { parts.append("within \(days) days") }
+        parts += resolved.phrases.map { "\"\($0)\"" }
+        parts += resolved.terms
+        return parts.joined(separator: " · ")
     }
 
     // MARK: Actions
 
-    /// Hand the typed sentence to the generator and let it rewrite the query.
-    ///
-    /// The result lands in the search field as the same operator syntax a
-    /// person types by hand. That is the whole reason this is text: whatever
-    /// the model decided is visible, editable, and correctable in the one place
-    /// they were already looking, rather than an opaque state they can only
-    /// accept or discard.
-    private func resolveSearchText() {
-        guard generator.unavailableReason == nil else { return }
+    /// Debounced: after a pause in typing, hand sentence-like text (two or
+    /// more bare words, no operator syntax) to the on-device model and OFFER
+    /// its reading as a suggestion row. Never applied unasked - accepting the
+    /// row writes the same serialized syntax a person types by hand, through
+    /// the one query path, so whatever the model decided stays visible,
+    /// editable, and correctable. Model off, token text, or an empty read all
+    /// mean the same thing: no row.
+    private func scheduleNLSuggestion() {
+        nlTask?.cancel()
+        nlSuggestion = nil
+        nlThinking = false
         let text = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isResolving else { return }
-        isResolving = true
-        Task {
-            defer { isResolving = false }
-            do {
-                let resolved = try await generator.generate(from: text, now: .now)
-                if resolved.isEmpty {
-                    queryMessage = "Nothing in that named a category, region, or timeframe."
-                } else {
-                    queryText = resolved.serialized()
-                }
-            } catch {
-                queryMessage = error.localizedDescription
-            }
+        guard generator.unavailableReason == nil,
+              text.contains(" "), !text.contains(":")
+        else { return }
+        nlTask = Task {
+            try? await Task.sleep(for: .milliseconds(800))
+            guard !Task.isCancelled else { return }
+            nlThinking = true
+            defer { nlThinking = false }
+            guard let resolved = try? await generator.generate(from: text, now: .now),
+                  !Task.isCancelled, !resolved.isEmpty
+            else { return }
+            nlSuggestion = resolved
         }
     }
 
@@ -360,7 +384,6 @@ struct MainWindow: View {
 
     private func clearFilters() {
         queryText = ""
-        queryMessage = nil
     }
 
     /// Select the row a widget deep link staged, then clear it so a repeat tap
