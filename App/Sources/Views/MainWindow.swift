@@ -15,6 +15,11 @@ struct MainWindow: View {
     /// nothing to disagree.
     @AppStorage("list.query") private var queryText = ""
     @AppStorage("list.sort") private var sort: ListSort = .deadline
+    /// Whether the sort runs opposite its canonical direction, toggled by
+    /// re-clicking a table header. Deliberately transient (@State, not
+    /// AppStorage): a relaunch returns every sort to the direction its menu
+    /// label promises, so a flip can never become an invisible mystery later.
+    @State private var sortFlipped = false
     @AppStorage("list.grouping") private var grouping: ListGrouping = .none
     /// Desktop layout: list-plus-detail split, or the full-width table.
     /// Stored but unread on iOS, which always shows the single list.
@@ -56,6 +61,9 @@ struct MainWindow: View {
                 queryMessage = nil
                 syncMenuBarLens()
             }
+            // Whatever changed the sort - menu pick or a different column's
+            // header - the new sort starts at its canonical direction.
+            .onChange(of: sort) { sortFlipped = false }
             .onChange(of: model.deepLinkSelection) { applyDeepLinkSelection() }
     }
 
@@ -119,7 +127,7 @@ struct MainWindow: View {
                     .padding(.bottom, 4)
             }
             CompetitionListPane(
-                query: query, sort: $sort,
+                query: query, sort: $sort, sortFlipped: $sortFlipped,
                 grouping: grouping, style: style,
                 categorySelection: categorySelection,
                 markedOnly: markedOnly,

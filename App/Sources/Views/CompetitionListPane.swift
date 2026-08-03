@@ -19,6 +19,9 @@ import SwiftUI
 struct CompetitionListPane: View {
     let query: SearchQuery
     @Binding var sort: ListSort
+    /// Direction flip from a repeated table-header click; applies to the
+    /// list style too, because the two styles are projections of one order.
+    @Binding var sortFlipped: Bool
     let grouping: ListGrouping
     /// Desktop layout choice; the phone ignores it.
     let style: ListStyle
@@ -49,7 +52,10 @@ struct CompetitionListPane: View {
         // `fitValue`. An onChange would adopt only after a render had
         // already scored against the stale profile.
         FitContext.adopt(profiles.first?.snapshot() ?? .defaults)
-        return query.results(from: competitions, tieBreak: sort.areInOrder)
+        let canonical = sort.areInOrder
+        return query.results(
+            from: competitions,
+            tieBreak: sortFlipped ? { canonical($1, $0) } : canonical)
     }
 
     private var isRanked: Bool { !query.terms.isEmpty }
@@ -99,7 +105,8 @@ struct CompetitionListPane: View {
                     emptyState
                 } else {
                     CompetitionTablePane(
-                        rows: rows, selectedID: $selectedID, sort: $sort)
+                        rows: rows, selectedID: $selectedID,
+                        sort: $sort, flipped: $sortFlipped)
                 }
             }
             .inspector(isPresented: inspectorShown) {
