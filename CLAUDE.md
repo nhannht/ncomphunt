@@ -344,6 +344,29 @@ independent axes. Rules that are easy to violate later:
   end date reads as "over" for browsing, but a follower registered - the start
   countdown is the face they are waiting for.
 
+## App Intents: Siri, Spotlight, Shortcuts (COMP-24)
+
+`App/Sources/Intents/` exposes the index to the system - and on macOS 26 to
+the Shortcuts "Use Model" action, so people can pipe competitions through
+Apple Intelligence in automations we never wrote. Entities expose only what
+the app already stores; no new data collection.
+
+- `CompetitionEntity` (AppEntity + IndexedEntity): id IS the dedupe key, so
+  Spotlight taps, intent results, widget taps, and reminders all route through
+  `competitionDeepLink(key:)`. `CompetitionQuery` resolves through the ONE
+  `AppModel`, registered with `AppDependencyManager` in `CompHuntRoot.init` -
+  never a second `ModelContainer` on the same store file.
+- Intents: `NextCompetitionIntent` (dialog via `whenLine`),
+  `UpcomingCompetitionsIntent` (returns entities, not prose - that is what
+  "Use Model" consumes), `OpenCompetitionIntent` (returns
+  `OpenURLIntent(competitionDeepLink(...))` - one open path).
+- `CategoryOption` is the app-layer AppEnum mirror of `CompetitionCategory`
+  (kit stays framework-free); its display names must match `displayName`.
+- Spotlight donation is whole-set delete + reindex after every refresh in
+  `AppModel.donateToSpotlight` - self-healing like the reminders, prune-safe
+  by construction. Siri phrases must contain the app name, so "next CTF"
+  ships as "next CTF in nCompHunt".
+
 ## Conventions
 
 - Swift 6 strict concurrency; sources return plain `CompetitionDTO` values,
