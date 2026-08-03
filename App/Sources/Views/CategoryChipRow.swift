@@ -38,7 +38,7 @@ struct CategoryChipRow: View {
 
     private var markedChip: some View {
         Button {
-            withAnimation(.snappy(duration: 0.25)) { markedOnly.toggle() }
+            withAnimation(Motion.state) { markedOnly.toggle() }
         } label: {
             Image(systemName: markedOnly ? "star.fill" : "star")
                 .font(.caption)
@@ -55,7 +55,7 @@ struct CategoryChipRow: View {
         let isSelected = (selection ?? .all) == filter
         let tint = filter.categoryValue?.tint
         return Button {
-            withAnimation(.snappy(duration: 0.25)) { selection = filter }
+            withAnimation(Motion.state) { selection = filter }
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: filter.systemImage)
