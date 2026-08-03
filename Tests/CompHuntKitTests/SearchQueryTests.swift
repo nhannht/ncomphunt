@@ -12,7 +12,7 @@ private func comp(
     let dto = CompetitionDTO(
         source: source, title: title, organizer: organizer,
         url: "https://example.com/\(title)")
-    return Competition(dto: dto, category: category, region: region)
+    return Competition(dto: dto, tags: category == .other ? [] : [category], region: region)
 }
 
 // The three rows the reported query should have found. Computed rather than
@@ -157,6 +157,39 @@ private var spectral: Competition {
     @Test func quotedPhrasesDoExclude() {
         #expect(!index.contains { SearchQuery.parse("\"open cup\"").admits($0) })
         #expect(index.contains { SearchQuery.parse("\"open atlas\"").admits($0) })
+    }
+}
+
+@Suite struct CategoryContainment {
+    /// The category filter is containment over the tag set, not equality on
+    /// the leading tag: a poetry-music-photography contest belongs under
+    /// writing AND media, and either sidebar entry must surface it.
+    @Test func aRowIsAdmittedByEveryTagItCarries() {
+        let dto = CompetitionDTO(
+            source: "ybox", title: "Cuộc Thi Sáng Tác Thơ, Âm Nhạc, Nhiếp Ảnh",
+            url: "https://ybox.vn/cuoc-thi/tho-nhac-anh")
+        let row = Competition(dto: dto, tags: [.writing, .media], region: .vietnam)
+
+        #expect(SearchQuery.parse("category:writing").admits(row))
+        #expect(SearchQuery.parse("category:media").admits(row))
+        #expect(!SearchQuery.parse("category:ctf").admits(row))
+    }
+
+    /// An unplaced row still answers to the Other sidebar entry: its empty
+    /// tag set holds nothing, and the projection falls back to `.other`.
+    @Test func anUnplacedRowAnswersToOther() {
+        let row = comp("Mystery Gala", category: .other)
+        #expect(SearchQuery.parse("category:other").admits(row))
+        #expect(!SearchQuery.parse("category:media").admits(row))
+    }
+
+    /// Rows migrated from before the tags column filter by their stored
+    /// category until the backfill reaches them - never by nothing.
+    @Test func aPreBackfillRowFiltersByItsStoredCategory() {
+        let row = comp("Declared AI Challenge", category: .ai)
+        row.categoryTagsRaw = ""
+        #expect(SearchQuery.parse("category:ai").admits(row))
+        #expect(!SearchQuery.parse("category:media").admits(row))
     }
 }
 

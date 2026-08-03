@@ -15,7 +15,7 @@ private func comp(
     let dto = CompetitionDTO(
         source: source, title: title, organizer: "",
         url: "https://example.com/\(title)", endDate: end)
-    return Competition(dto: dto, category: category, region: region)
+    return Competition(dto: dto, tags: category == .other ? [] : [category], region: region)
 }
 
 /// The three rows the reported query should have found, with the dates the

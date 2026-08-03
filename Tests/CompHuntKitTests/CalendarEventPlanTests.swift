@@ -21,7 +21,7 @@ import Testing
             source: source, title: title, organizer: organizer, url: url,
             location: location, prize: prize, startDate: startDate, endDate: endDate,
             registrationDeadline: registrationDeadline)
-        return Competition(dto: dto, category: .other, region: .global, now: now)
+        return Competition(dto: dto, tags: [], region: .global, now: now)
     }
 
     // MARK: plan shaping (mirrors ICSBuilder so the .ics and EventKit agree)

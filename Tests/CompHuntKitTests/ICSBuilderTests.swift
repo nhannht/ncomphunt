@@ -19,7 +19,7 @@ import Testing
             source: "fake", title: title, url: url, location: location,
             prize: prize, startDate: startDate, endDate: endDate,
             registrationDeadline: registrationDeadline)
-        return Competition(dto: dto, category: .other, region: .global, now: now)
+        return Competition(dto: dto, tags: [], region: .global, now: now)
     }
 
     @Test func deadlineOnlyBecomesOneHourBlock() throws {

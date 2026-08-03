@@ -29,7 +29,7 @@ import Testing
             url: "https://example.com/\(title)", location: "", prize: "",
             startDate: startDate, endDate: endDate,
             registrationDeadline: registrationDeadline)
-        return Competition(dto: dto, category: .other, region: .global,
+        return Competition(dto: dto, tags: [], region: .global,
                            now: firstSeen ?? date(2020, 1, 1))
     }
 

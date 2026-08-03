@@ -87,7 +87,10 @@ public struct SearchQuery: Equatable, Sendable {
     /// deliberately not consulted: that omission is the invariant making an
     /// empty list unreachable by typing.
     public func admits(_ competition: Competition, now: Date = .now) -> Bool {
-        if !categories.isEmpty, !categories.contains(competition.category) { return false }
+        // Containment over the tag set, not equality on the single category: a
+        // poetry-music-photography contest belongs under writing AND media,
+        // and clicking either sidebar entry must surface it.
+        if !categories.isEmpty, !categories.contains(where: competition.belongs(to:)) { return false }
         if !regions.isEmpty, !regions.contains(competition.region) { return false }
         if !sources.isEmpty {
             guard let id = SourceID(rawValue: competition.source),

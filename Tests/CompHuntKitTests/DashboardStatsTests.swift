@@ -25,7 +25,7 @@ import Testing
             url: "https://example.com/\(title)", location: "", prize: "",
             startDate: startDate, endDate: endDate,
             registrationDeadline: registrationDeadline)
-        let row = Competition(dto: dto, category: category, region: region, now: now)
+        let row = Competition(dto: dto, tags: category == .other ? [] : [category], region: region, now: now)
         row.status = status
         return row
     }

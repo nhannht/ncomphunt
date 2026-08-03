@@ -55,7 +55,7 @@ private func freshContext() throws -> ModelContext {
                 source: "ybox",
                 title: "[HN] Cuộc Thi Hùng Biện Kinh Tế Đỉnh Cao",
                 url: "https://ybox.vn/cuoc-thi/stranded"),
-            category: .other, region: .vietnam)
+            tags: [], region: .vietnam)
         context.insert(stranded)
         try context.save()
 
@@ -74,7 +74,7 @@ private func freshContext() throws -> ModelContext {
             dto: CompetitionDTO(
                 source: "mlcontests", title: "NextGen Innovation 2026",
                 url: "https://example.com/nextgen"),
-            category: .ai, region: .global)
+            tags: [.ai], region: .global)
         context.insert(declared)
         try context.save()
 
@@ -91,7 +91,7 @@ private func freshContext() throws -> ModelContext {
                 source: "ybox",
                 title: "[Toàn Cầu] Cơ Hội Nhận 1 Tỷ Đồng Từ Chương Trình Connections",
                 url: "https://ybox.vn/cuoc-thi/unplaceable"),
-            category: .other, region: .vietnam)
+            tags: [], region: .vietnam)
         context.insert(unplaceable)
         try context.save()
 
@@ -166,5 +166,82 @@ private func freshContext() throws -> ModelContext {
         #expect(vn.category == .cp)
         let ai = try #require(all.first { $0.title.contains("AI Grand") })
         #expect(ai.category == .ai)
+    }
+}
+
+@MainActor
+@Suite struct PersistedTags {
+    /// Upsert stores the classifier's whole answer, and the single category is
+    /// its first entry - a projection, never a second decision.
+    @Test func upsertPersistsEveryTagAndTheProjection() throws {
+        let context = try freshContext()
+        let multi = CompetitionDTO(
+            source: "ybox",
+            title: "Cuộc Thi Sáng Tác Thơ, Âm Nhạc, Nhiếp Ảnh",
+            url: "https://ybox.vn/cuoc-thi/tho-nhac-anh")
+        _ = try CompetitionStore.upsert([multi], into: context)
+
+        let row = try #require(try context.fetch(FetchDescriptor<Competition>()).first)
+        #expect(row.categoryTags == [.writing, .media])
+        #expect(row.category == .writing)
+        #expect(row.belongs(to: .media))
+    }
+
+    /// The rescue pass writes the whole tag set too, not just a category.
+    @Test func rescueWritesTags() throws {
+        let context = try freshContext()
+        let stranded = Competition(
+            dto: CompetitionDTO(
+                source: "ybox",
+                title: "Cuộc Thi Sáng Tác Thơ Và Nhiếp Ảnh",
+                url: "https://ybox.vn/cuoc-thi/stranded-tags"),
+            tags: [], region: .vietnam)
+        context.insert(stranded)
+        try context.save()
+
+        #expect(try CompetitionStore.reclassifyUnplaced(context) == 1)
+        #expect(stranded.categoryTags == [.writing, .media])
+        #expect(stranded.category == .writing)
+    }
+
+    /// Backfill for rows that predate the tags column. The stored category may
+    /// have been DECLARED by a source and nothing in the text says it, so it
+    /// stays first - no row can downgrade - and what the text does say is
+    /// appended after it.
+    @Test func backfillKeepsTheStoredCategoryFirst() throws {
+        let context = try freshContext()
+        // What MLContests declares .ai about; the title itself reads as media.
+        let declared = Competition(
+            dto: CompetitionDTO(
+                source: "mlcontests", title: "Video Understanding Challenge",
+                url: "https://example.com/video-ai"),
+            tags: [.ai], region: .global)
+        context.insert(declared)
+        try context.save()
+        // Simulate a row migrated from before the column existed.
+        declared.categoryTagsRaw = ""
+
+        #expect(try CompetitionStore.backfillMissingTags(context) == 1)
+        #expect(declared.categoryTags == [.ai, .media])
+        #expect(declared.category == .ai)
+
+        // One-time by construction: the set it fills can never match again.
+        #expect(try CompetitionStore.backfillMissingTags(context) == 0)
+    }
+
+    /// `.other` rows are not backfill's to touch - they belong to the rescue
+    /// pass, which may still move them somewhere real.
+    @Test func backfillLeavesOtherRowsToTheRescuePass() throws {
+        let context = try freshContext()
+        let unplaced = Competition(
+            dto: CompetitionDTO(
+                source: "ybox", title: "Chương Trình Trao Đổi Văn Hóa",
+                url: "https://ybox.vn/cuoc-thi/vanhoa"),
+            tags: [], region: .vietnam)
+        context.insert(unplaced)
+        try context.save()
+
+        #expect(try CompetitionStore.backfillMissingTags(context) == 0)
+        #expect(unplaced.categoryTagsRaw.isEmpty)
     }
 }

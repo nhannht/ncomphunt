@@ -18,7 +18,7 @@ private func comp(
         source: source, title: title, organizer: organizer,
         url: "https://example.com/\(title)",
         endDate: end, registrationDeadline: deadline)
-    return Competition(dto: dto, category: category, region: region)
+    return Competition(dto: dto, tags: category == .other ? [] : [category], region: region)
 }
 
 /// A query can carry several constraints at once, and a person has no way to

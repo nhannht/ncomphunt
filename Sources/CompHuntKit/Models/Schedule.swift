@@ -51,7 +51,9 @@ public func upcomingContests(
     let sorted = competitions
         .filter { competition in
             guard competition.isCurrent(asOf: now) else { return false }
-            if let category, competition.category != category { return false }
+            // Same containment rule as SearchQuery.admits: a filter asks
+            // "does this row belong here", not "is this its leading tag".
+            if let category, !competition.belongs(to: category) { return false }
             if let region, competition.region != region { return false }
             guard let next = competition.nextRelevantDate, next >= now else { return false }
             return true

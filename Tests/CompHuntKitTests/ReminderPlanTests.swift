@@ -23,7 +23,7 @@ import Testing
             source: "fake", title: title, organizer: "", url: url,
             location: "", prize: prize, startDate: startDate, endDate: endDate,
             registrationDeadline: registrationDeadline)
-        let row = Competition(dto: dto, category: .other, region: .global, now: now)
+        let row = Competition(dto: dto, tags: [], region: .global, now: now)
         row.status = status
         return row
     }

@@ -42,6 +42,24 @@ import Testing
         try context.save()
     }
 
+    /// Writes rows through the frozen V2 shape - what every v1.0.x install
+    /// has on disk.
+    private func seedV2Store(at url: URL, count: Int = 2) throws {
+        let container = try ModelContainer(
+            for: CompetitionSchemaV2.Competition.self,
+            configurations: ModelConfiguration(url: url))
+        let context = ModelContext(container)
+        for index in 0..<count {
+            let row = CompetitionSchemaV2.Competition(
+                key: "ybox.vn/cuoc-thi/\(index)",
+                source: "ybox",
+                title: "Marked competition \(index)")
+            row.statusRaw = "interested"
+            context.insert(row)
+        }
+        try context.save()
+    }
+
     private func openCurrentStore(at url: URL) throws -> ModelContext {
         let container = try ModelContainer(
             for: Competition.self,
@@ -104,5 +122,44 @@ import Testing
     @Test func everySchemaVersionHasAStageIntoTheNextOne() {
         #expect(CompetitionMigrationPlan.stages.count
             == CompetitionMigrationPlan.schemas.count - 1)
+    }
+
+    /// The population every current install is in: a V2 store, marks and all,
+    /// crossing into V3. The mark must survive and the new column must read
+    /// as "never computed" so the refresh backfill can find it.
+    @Test func aV2StoreCrossesIntoV3KeepingItsMarks() throws {
+        try withTemporaryStore { url in
+            try seedV2Store(at: url)
+
+            let context = try openCurrentStore(at: url)
+            let rows = try context.fetch(FetchDescriptor<Competition>())
+
+            #expect(rows.count == 2)
+            #expect(rows.allSatisfy { $0.statusRaw == "interested" })
+            #expect(rows.allSatisfy { $0.categoryTagsRaw.isEmpty })
+        }
+    }
+
+    /// Tags written after migration survive a reopen, and the projection
+    /// invariant holds through the round trip.
+    @Test func tagsWrittenAfterMigrationSurviveAReopen() throws {
+        try withTemporaryStore { url in
+            try seedV1Store(at: url)
+
+            let context = try openCurrentStore(at: url)
+            let first = try #require(
+                try context.fetch(FetchDescriptor<Competition>())
+                    .sorted { $0.key < $1.key }.first)
+            first.categoryTags = [.writing, .media]
+            try context.save()
+
+            let reopened = try openCurrentStore(at: url)
+            let tagged = try #require(
+                try reopened.fetch(FetchDescriptor<Competition>())
+                    .first { !$0.categoryTagsRaw.isEmpty })
+
+            #expect(tagged.categoryTags == [.writing, .media])
+            #expect(tagged.category == .writing)
+        }
     }
 }

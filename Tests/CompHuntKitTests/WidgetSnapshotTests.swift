@@ -16,7 +16,7 @@ private func comp(
     let dto = CompetitionDTO(
         source: "test", title: title, url: url ?? "https://example.com/\(title)",
         startDate: start, endDate: end, registrationDeadline: deadline)
-    return Competition(dto: dto, category: category, region: region)
+    return Competition(dto: dto, tags: category == .other ? [] : [category], region: region)
 }
 
 @Suite struct UpcomingContests {

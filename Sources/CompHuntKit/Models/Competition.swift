@@ -18,6 +18,14 @@ public final class Competition {
     public var organizer: String
     public var url: String
     public var categoryRaw: String
+    /// Every category the classifier found, comma-joined in priority order -
+    /// a competition can genuinely be several things at once, and this is
+    /// where the answers beyond the first stop being thrown away.
+    /// `categoryRaw` is always the FIRST entry (or `other` when empty): a
+    /// projection, never a second decision, so the two can never disagree.
+    /// Empty means "never computed" - rows from before schema V3, backfilled
+    /// on the next refresh. Added in V3; see `CompetitionSchema.swift`.
+    public var categoryTagsRaw: String = ""
     public var regionRaw: String
     public var location: String
     public var prize: String
@@ -38,18 +46,53 @@ public final class Competition {
         set { categoryRaw = newValue.rawValue }
     }
 
+    /// The persisted tag set, decoded. Setting also writes `categoryRaw`, so
+    /// the projection invariant cannot be broken from outside.
+    public var categoryTags: [CompetitionCategory] {
+        get {
+            categoryTagsRaw.split(separator: ",")
+                .compactMap { CompetitionCategory(rawValue: String($0)) }
+        }
+        set {
+            categoryTagsRaw = newValue.map(\.rawValue).joined(separator: ",")
+            categoryRaw = (newValue.first ?? .other).rawValue
+        }
+    }
+
+    /// Whether this row belongs under `category` when filtering - containment
+    /// over the tag set, not equality on the projection. Falls back to the
+    /// single stored category for rows whose tags were never computed, and
+    /// that same fallback is what lets an unplaced row answer to `.other`
+    /// (the empty tag set holds nothing, honestly).
+    public func belongs(to category: CompetitionCategory) -> Bool {
+        self.category == category || categoryTags.contains(category)
+    }
+
+    /// The tag set for surfaces that render them all, never empty: the
+    /// computed tags, or the single stored category for rows whose tags were
+    /// never computed - the same fallback `belongs(to:)` filters by, so what
+    /// a row shows and where it appears cannot disagree.
+    public var shownCategoryTags: [CompetitionCategory] {
+        let tags = categoryTags
+        return tags.isEmpty ? [category] : tags
+    }
+
     public var region: Region {
         get { Region(rawValue: regionRaw) ?? .global }
         set { regionRaw = newValue.rawValue }
     }
 
-    public init(dto: CompetitionDTO, category: CompetitionCategory, region: Region, now: Date = .now) {
+    /// Takes the classifier's full tag list rather than a single category:
+    /// `categoryRaw` is derived from it here, which is what makes the
+    /// projection an invariant instead of a convention callers must remember.
+    public init(dto: CompetitionDTO, tags: [CompetitionCategory], region: Region, now: Date = .now) {
         self.key = dto.key
         self.source = dto.source
         self.title = dto.title
         self.organizer = dto.organizer
         self.url = dto.url
-        self.categoryRaw = category.rawValue
+        self.categoryRaw = (tags.first ?? .other).rawValue
+        self.categoryTagsRaw = tags.map(\.rawValue).joined(separator: ",")
         self.regionRaw = region.rawValue
         self.location = dto.location
         self.prize = dto.prize
@@ -69,7 +112,7 @@ public final class Competition {
     /// Never-downgrade policy: sources sometimes serve slimmer copies of a
     /// post they served richly before (ybox recommendation rails), so an
     /// empty incoming field must not clobber a known value.
-    public func update(from dto: CompetitionDTO, category: CompetitionCategory, region: Region, now: Date = .now) {
+    public func update(from dto: CompetitionDTO, tags: [CompetitionCategory], region: Region, now: Date = .now) {
         if !dto.title.isEmpty { self.title = dto.title }
         if !dto.organizer.isEmpty { self.organizer = dto.organizer }
         if !dto.url.isEmpty { self.url = dto.url }
@@ -81,8 +124,8 @@ public final class Competition {
         if let deadline = dto.registrationDeadline { self.registrationDeadline = deadline }
         // Reclassification may add signal but never dumps a row back into the
         // default buckets a poorer copy would produce.
-        if category != .other || self.category == .other {
-            self.categoryRaw = category.rawValue
+        if !tags.isEmpty || self.category == .other {
+            self.categoryTags = tags
         }
         if region == .vietnam {
             self.regionRaw = region.rawValue

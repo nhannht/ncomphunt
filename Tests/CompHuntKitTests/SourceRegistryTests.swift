@@ -50,7 +50,7 @@ import Testing
             source: "brave", title: title,
             url: "https://example.com/\(title.hashValue.magnitude)",
             registrationDeadline: deadline)
-        let row = Competition(dto: dto, category: .other, region: .global, now: lastSeen)
+        let row = Competition(dto: dto, tags: [], region: .global, now: lastSeen)
         row.trackedIssueID = tracked
         row.status = status
         context.insert(row)

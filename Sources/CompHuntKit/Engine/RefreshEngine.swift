@@ -94,6 +94,7 @@ public struct RefreshEngine: Sendable {
         // the classifier is run over the leftovers here rather than only over
         // what a feed happens to be listing today.
         _ = try? CompetitionStore.reclassifyUnplaced(context)
+        _ = try? CompetitionStore.backfillMissingTags(context)
         _ = try? CompetitionStore.prune(context, now: now)
         return RefreshReport(results: results, newTitles: newTitles)
     }
@@ -123,15 +124,15 @@ public enum CompetitionStore {
 
         var newTitles: [String] = []
         for dto in unique {
-            let category = Classifier.category(for: dto)
+            let tags = Classifier.tags(for: dto)
             let region = Classifier.region(for: dto)
             let key = dto.key
             let descriptor = FetchDescriptor<Competition>(
                 predicate: #Predicate { $0.key == key })
             if let existing = try context.fetch(descriptor).first {
-                existing.update(from: dto, category: category, region: region, now: now)
+                existing.update(from: dto, tags: tags, region: region, now: now)
             } else {
-                context.insert(Competition(dto: dto, category: category, region: region, now: now))
+                context.insert(Competition(dto: dto, tags: tags, region: region, now: now))
                 newTitles.append(dto.title)
             }
         }
@@ -171,15 +172,53 @@ public enum CompetitionStore {
                 source: row.source, title: row.title, organizer: row.organizer,
                 url: row.url, category: nil, location: row.location,
                 prize: row.prize, details: row.details)
-            let category = Classifier.category(for: dto)
-            guard category != .other else { continue }
-            row.categoryRaw = category.rawValue
+            let tags = Classifier.tags(for: dto)
+            guard !tags.isEmpty else { continue }
+            row.categoryTags = tags
             moved += 1
         }
         if moved > 0 {
             try context.save()
         }
         return moved
+    }
+
+    /// Fills `categoryTags` for rows that predate schema V3, once.
+    ///
+    /// The stored category is treated as data, not re-derived: it may have
+    /// come from a source that DECLARED it, and the store does not record
+    /// which answers were declared and which were guessed (the same reasoning
+    /// that scopes `reclassifyUnplaced` to `.other`). So the stored category
+    /// stays FIRST - the projection holds and no row can downgrade - and
+    /// whatever else the classifier reads from the stored text is appended
+    /// after it. `.other` rows are not touched here; they belong to
+    /// `reclassifyUnplaced`, which may still move them somewhere real.
+    ///
+    /// One-time by construction: every row this pass visits leaves with a
+    /// non-empty tag set (its category is not `.other`), so it can never
+    /// match the fetch again.
+    @MainActor
+    @discardableResult
+    public static func backfillMissingTags(_ context: ModelContext) throws -> Int {
+        let unplaced = CompetitionCategory.other.rawValue
+        let descriptor = FetchDescriptor<Competition>(
+            predicate: #Predicate {
+                $0.categoryTagsRaw == "" && $0.categoryRaw != unplaced
+            })
+        var filled = 0
+        for row in try context.fetch(descriptor) {
+            let dto = CompetitionDTO(
+                source: row.source, title: row.title, organizer: row.organizer,
+                url: row.url, category: nil, location: row.location,
+                prize: row.prize, details: row.details)
+            let stored = row.category
+            row.categoryTags = [stored] + Classifier.tags(for: dto).filter { $0 != stored }
+            filled += 1
+        }
+        if filled > 0 {
+            try context.save()
+        }
+        return filled
     }
 
     /// Deletes stale dateless leads. Rows with no dates (mostly search hits)

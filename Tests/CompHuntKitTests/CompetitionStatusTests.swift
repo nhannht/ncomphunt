@@ -11,7 +11,7 @@ import Testing
             source: "fake", title: title, organizer: "", url: "https://example.com/\(title)",
             location: "", prize: "", startDate: nil, endDate: nil,
             registrationDeadline: nil)
-        return Competition(dto: dto, category: .other, region: .global, now: now)
+        return Competition(dto: dto, tags: [], region: .global, now: now)
     }
 
     // MARK: the mark itself

@@ -51,7 +51,16 @@ map in the same turn.
 ## Layout
 
 - `Sources/CompHuntKit/Models/` - `CompetitionDTO` (Sendable struct sources
-  return), `Competition` (SwiftData `@Model`, `#Unique` on `key`), `Category`
+  return), `Competition` (SwiftData `@Model`, `#Unique` on `key`; persists
+  `categoryTagsRaw` - the classifier's WHOLE answer, comma-joined - with
+  `categoryRaw` always its first entry or `other`, a projection enforced by
+  the `tags:` initializer and the `categoryTags` setter. Filtering is
+  containment via `belongs(to:)` - sidebar, chips, `category:` operator,
+  widget/menu-bar `upcomingContests` all ask "does this row carry the tag",
+  so a poetry+music+photography row surfaces under writing AND media.
+  Single-slot surfaces - group-by, table column, row dot, dashboard tallies -
+  stay on the `category` projection; dashboard counts partition on purpose so
+  they sum to the total), `Category`
   (cp/ctf/ai/hackathon/design/writing/media/business/academic/other),
   `Region` (vietnam/global)
 - `Sources/CompHuntKit/Sources/` - one file per source implementing
@@ -71,12 +80,24 @@ map in the same turn.
 - `Sources/CompHuntKit/Engine/` - `Classifier` (`tags(for:)` returns EVERY
   category the text supports, in priority order; `category(for:)` is a
   projection of it - `tags.first ?? .other` - never a second decision. Keyword
-  needles are word-anchored, and a `*` prefix additionally allows a word-FINAL
-  match, which is what makes `picoCTF` a CTF while `ImpactForge` is not. A
-  source that declares its own kind ends the search. The last four categories
-  exist because 81 rows sat in `.other`, all from ybox, 88% of them naming an
+  needles are word-anchored; a `*` prefix additionally allows a word-FINAL
+  match (what makes `picoCTF` a CTF while `ImpactForge` is not) and a `*`
+  suffix a word-INITIAL match (`photograph*` reaches photography and
+  photographer; English inflects, Vietnamese compounds, so only English
+  needles carry stems). `details` is a FALLBACK haystack consulted only when
+  title+tags say nothing - never merged into one haystack, because marketing
+  prose name-drops ("AI is changing real estate") and merged haystacks flipped
+  leading tags on rows the title had already answered (measured 2026-08-03,
+  ybox `.other` 53 -> 22 of 117 with zero lead-tag changes). A source that
+  declares its own kind ends the search. The last four categories exist
+  because 81 rows sat in `.other`, all from ybox, 88% of them naming an
   activity the taxonomy had no case for - see
-  `../research/comp-27-classification/`. Also Vietnam detection;
+  `../research/comp-27-classification/`. The vocabulary is CLOSED on purpose:
+  multi-tag assignment from the fixed enum, never an open tag namespace - the
+  research measured open vocabularies fragmenting (4 names for photography, a
+  typo becoming a permanent bucket) and the on-device model was taken out of
+  the shipped classification path entirely (pass 10: one cosmetic prompt
+  rewording swung output 2x). Also Vietnam detection;
   VN detection = `.vn` host, VN place names, and a `vietnamContestBrands`
   allowlist that tags VN technical contests - VNOI, WhiteHat, Zalo, SVATTT -
   arriving from clist/CTFtime/Codeforces under a non-.vn host and English title),
@@ -216,8 +237,17 @@ Rules that are easy to violate later:
 - **Adding a stored property to `Competition` requires a new version in
   `CompetitionSchema.swift`.** The store shipped in v0.1-v0.3; an unversioned
   change traps at launch (`Attempting to set value for unknown key`), before
-  there is any UI to report it in. `CompetitionSchemaV1` is frozen - never edit
-  it, the migration matches stores against it.
+  there is any UI to report it in. Every version except the NEWEST nests a
+  frozen copy of the model (V1 as shipped through v0.3.0, V2 through v1.0.x) -
+  never edit them, the migration matches stores against them. Only the newest
+  version points at the live type, and adding V(n+1) means freezing V(n)'s
+  copy in the same turn: a version aliased to a live type that later grows a
+  property no longer describes any store on disk. Rows migrated into V3 have
+  empty `categoryTagsRaw`; `CompetitionStore.backfillMissingTags` (run every
+  refresh, one-time per row by construction) fills them keeping the stored
+  category FIRST, because the store does not record which categories were
+  source-declared and re-deriving one from text would downgrade it - same
+  reasoning that scopes `reclassifyUnplaced` to `.other`.
 
 ## Conventions
 
