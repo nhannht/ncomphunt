@@ -366,6 +366,15 @@ the app already stores; no new data collection.
   `AppModel.donateToSpotlight` - self-healing like the reminders, prune-safe
   by construction. Siri phrases must contain the app name, so "next CTF"
   ships as "next CTF in nCompHunt".
+- Testing intents on this Mac (learned 2026-08-04): Shortcuts refuses an
+  ad-hoc-signed app with "couldn't communicate with the app", so a Debug
+  build installed to /Applications must be re-signed first:
+  `codesign --force --deep --preserve-metadata=entitlements -s "Developer ID
+  Application" /Applications/nCompHunt.app`. Headless check: author a one-
+  action .shortcut plist (`WFWorkflowActionIdentifier` =
+  `com.nhannht.ncomphunt.<IntentTypeName>`, params like
+  `{"category": "ctf"}`), `shortcuts sign --mode anyone`, import, then
+  `shortcuts run <name> -o out.txt` and assert on the output.
 
 ## Conventions
 
