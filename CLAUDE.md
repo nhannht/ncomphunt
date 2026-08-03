@@ -152,7 +152,7 @@ map in the same turn.
   in the app, not a headline button)
 - `Sources/CompHuntKit/Query/` - `SearchQuery` (operators `category:`, `region:`,
   `source:`, `status:`, `deadline:`, plus results, diagnosis, suggestions) plus
-  the on-device "Ask" natural-language filter:
+  the on-device natural-language filter:
   `NLFilterGenerator` + `GeneratedQuery` (Apple FoundationModels, no API key,
   free on both platforms - folded in from the retired comphunt-pro overlay
   2026-08-01; nCompHunt is free forever, there is no pro build)
@@ -181,10 +181,16 @@ map in the same turn.
   category into the query string rather than holding their own state. The
   sidebar marks each kind with a `CategoryDot`, never an SF Symbol: ten glyphs
   in a column read as ten unrelated pictures, and the dot is the marker every
-  other surface already uses. `CompetitionFilter.systemImage` survives with no
-  caller. Then one merged sort/group/region toolbar menu, an
-  "Ask" sparkles button (`NLFilterGenerator`, disabled with a reason when Apple
-  Intelligence is off), per-row context menu = `CompetitionActionsMenu`.
+  other surface already uses. (The iOS chip row is the opposite call and both
+  are deliberate: idle chips are icon-only `CompetitionFilter.systemImage`
+  glyphs so all eleven fit the phone's width, and the selected chip names
+  itself in a tinted capsule.) Then one merged sort/group/region toolbar menu,
+  per-row context menu = `CompetitionActionsMenu`. Natural-language search has
+  NO button (COMP-47): a sentence typed into the search field is resolved by
+  `NLFilterGenerator` after a debounce and OFFERED as a sparkles suggestion
+  row showing readable filters; accepting writes `serialized()` through the
+  one query path. Model off, token text, or an empty read = no row. Never
+  auto-apply the model's reading or rewrite typed text unasked.
   Inside the detail column the layout is per-platform. iOS is a single panel and
   rows tap-to-expand in place (`CompetitionExpandedView` inline, no push). macOS has
   two styles behind a toolbar toggle (`ListStyle` @AppStorage `list.style`):
@@ -378,9 +384,9 @@ conditional content. Rules that are easy to violate later:
 - **A number that can change rolls.** `contentTransition(.numericText())` on
   every changing figure - whenLine, prize, fit, tiles, menu-bar tick. A
   static-looking number is a bug in a countdown app.
-- **The control is its own progress indicator.** Ask shimmers
-  (`variableColor`) and Refresh rotates in place while busy; never swap a
-  button out for a `ProgressView`.
+- **The control is its own progress indicator.** The AI suggestion row
+  shimmers (`variableColor`) while the model reads, and Refresh rotates in
+  place while busy; never swap a control out for a `ProgressView`.
 
 ## App Intents: Siri, Spotlight, Shortcuts (COMP-24)
 
