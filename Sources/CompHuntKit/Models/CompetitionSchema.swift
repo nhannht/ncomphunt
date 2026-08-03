@@ -116,24 +116,44 @@ public enum CompetitionSchemaV2: VersionedSchema {
 /// Adds `categoryTagsRaw`: every category the classifier found, not only the
 /// first. Migrated rows read as empty, which the refresh backfills - see
 /// `CompetitionStore.backfillMissingTags`.
+///
+/// Still aliased to the live `Competition` even though V4 superseded it: the
+/// freeze rule exists for a live type that has since GROWN a property, and
+/// V4 changed the model SET (adding `UserProfile`), not `Competition`'s
+/// shape. The live type still describes every V3 store exactly. The day a
+/// property lands on `Competition`, THIS version gets its frozen copy.
 public enum CompetitionSchemaV3: VersionedSchema {
     public static var versionIdentifier: Schema.Version { Schema.Version(3, 0, 0) }
     public static var models: [any PersistentModel.Type] { [Competition.self] }
 }
 
-/// Each step is lightweight: an added property with a default, nothing to
-/// transform. V1 -> V2 is verified against a store written by the
+/// Adds the `UserProfile` model - a new table, no change to `Competition`.
+/// The profile is deliberately its own model: `Competition` rows are a
+/// rebuildable cache that `CompetitionStore.prune` deletes, and a profile
+/// stored there would be wiped with them.
+public enum CompetitionSchemaV4: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(4, 0, 0) }
+    public static var models: [any PersistentModel.Type] {
+        [Competition.self, UserProfile.self]
+    }
+}
+
+/// Each step is lightweight: an added property or model with a default,
+/// nothing to transform. V1 -> V2 is verified against a store written by the
 /// un-versioned shipped shape - the rows survive and the new column is
-/// writable; V2 -> V3 rides the same test through both stages.
+/// writable; every later stage rides the same test through the full walk.
 public enum CompetitionMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [CompetitionSchemaV1.self, CompetitionSchemaV2.self, CompetitionSchemaV3.self]
+        [CompetitionSchemaV1.self, CompetitionSchemaV2.self,
+         CompetitionSchemaV3.self, CompetitionSchemaV4.self]
     }
 
     public static var stages: [MigrationStage] {
         [.lightweight(fromVersion: CompetitionSchemaV1.self,
                       toVersion: CompetitionSchemaV2.self),
          .lightweight(fromVersion: CompetitionSchemaV2.self,
-                      toVersion: CompetitionSchemaV3.self)]
+                      toVersion: CompetitionSchemaV3.self),
+         .lightweight(fromVersion: CompetitionSchemaV3.self,
+                      toVersion: CompetitionSchemaV4.self)]
     }
 }

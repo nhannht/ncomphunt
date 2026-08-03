@@ -62,7 +62,14 @@ map in the same turn.
   stay on the `category` projection; dashboard counts partition on purpose so
   they sum to the total), `Category`
   (cp/ctf/ai/hackathon/design/writing/media/business/academic/other),
-  `Region` (vietnam/global)
+  `Region` (vietnam/global), `UserProfile` (COMP-16: single-row `@Model` -
+  interest weights, CF handle+cached rating, weekly hours, prize floor,
+  preferred region; schema V4. Deliberately NOT columns on `Competition`,
+  which prune deletes. `ProfileSnapshot` is its Sendable value form the
+  scorer reads; `suggestedInterests(from:)` seeds weights from marking
+  history - interested 1, applied 2, joined/done 3, dropped -1, normalized -
+  as an EXPLICIT Settings action, never continuous inference, so the ranked
+  list cannot reshuffle unasked)
 - `Sources/CompHuntKit/Sources/` - one file per source implementing
   `CompetitionSource` (`fetch() async throws -> [CompetitionDTO]`): CTFtime,
   Devpost, clist.by, Codeforces (keyless public `contest.list` API, upcoming
