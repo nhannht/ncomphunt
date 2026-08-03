@@ -129,7 +129,16 @@ map in the same turn.
   it exists to avoid is wall-versus-effort confusion: a 4-week AI contest is a
   20-60h committed band, never its 672h wall; a 48h jeopardy CTF is a
   12-19h slice; a CP round IS its wall. Missing dates degrade to a
-  low-confidence category default, never nil, so dateless rows still rank)
+  low-confidence category default, never nil, so dateless rows still rank),
+  `FitScorer` (COMP-15: profile + competition -> `RankedCompetition`
+  `{score 0-100, headline, reasons}` - nine components each add a signed
+  delta to a base of 50 and EVERY non-zero component emits a reason;
+  missing input SKIPS a component, never zeroes the score. Deterministic,
+  no model, per COMP-5. `FitContext` holds the adopted `ProfileSnapshot` -
+  process-wide because sort comparators only see the Competition, same
+  shape as PrizeNormalizer's cache; the app re-adopts on profile edits so
+  the list re-ranks live. Busy `[DateInterval]`s are a parameter awaiting
+  COMP-18; the app passes none today and the component skips)
 - `Sources/CompHuntKit/YouTrack/` - sink filing COMP issues (a small menu item
   in the app, not a headline button)
 - `Sources/CompHuntKit/Query/` - `SearchQuery` (operators `category:`, `region:`,
