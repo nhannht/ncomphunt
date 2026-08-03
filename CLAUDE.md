@@ -344,6 +344,24 @@ independent axes. Rules that are easy to violate later:
   end date reads as "over" for browsing, but a follower registered - the start
   countdown is the face they are waiting for.
 
+## Accessory widget families (iOS only, COMP-33)
+
+The upcoming-contests widget adds `accessoryInline` / `accessoryCircular` /
+`accessoryRectangular` for the Lock Screen - the iOS incarnation of the macOS
+menu-bar countdown (`MenuBarStatus`, which stays macOS-only UI): shortCode +
+ticking `CountdownText` over the snapshot's `topPick`, falling back to the
+soonest contest. Views live in `ContestAccessoryViews.swift`, whole file
+`#if os(iOS)`; the macOS extension keeps exactly `.systemSmall` +
+`.systemMedium`.
+
+- **One `WidgetView` case per family.** A family added to `supportedFamilies`
+  without its own switch case silently renders the un-tuned default layout.
+- **Identity is text, never `CategoryDot`.** Accessory rendering is vibrant
+  and desaturated - color carries nothing on the Lock Screen.
+- **`CountdownText` is the one countdown.** Shared with the Live Activity
+  (`App/Widget/CountdownText.swift`); accessoryInline concatenates its bare
+  `.text` because inline renders exactly one line of text.
+
 ## App Intents: Siri, Spotlight, Shortcuts (COMP-24)
 
 `App/Sources/Intents/` exposes the index to the system - and on macOS 26 to
