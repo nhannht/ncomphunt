@@ -1,4 +1,5 @@
 import CompHuntKit
+import CoreSpotlight
 import EventKit
 import Foundation
 import SwiftData
@@ -120,6 +121,7 @@ final class AppModel {
         #if os(iOS)
         await ContestActivities.reconcile(competitions: all)
         #endif
+        await donateToSpotlight(all)
         adoptReminderState()
         await refreshCodeforcesRating()
     }
@@ -143,8 +145,34 @@ final class AppModel {
     }
 
     /// Every persisted competition, or an empty array if the store read fails.
-    private func allCompetitions() -> [Competition] {
+    /// Internal rather than private: the App Intents query layer reads the
+    /// store through this one model (registered as a dependency), never
+    /// through a second container on the same file.
+    func allCompetitions() -> [Competition] {
         (try? container.mainContext.fetch(FetchDescriptor<Competition>())) ?? []
+    }
+
+    /// The row for a dedupe key: the one lookup behind the deep link route
+    /// and entity resolution.
+    func competition(forKey key: String) -> Competition? {
+        let descriptor = FetchDescriptor<Competition>(
+            predicate: #Predicate { $0.key == key })
+        return try? container.mainContext.fetch(descriptor).first
+    }
+
+    /// Spotlight mirrors the store: the whole set is re-donated after every
+    /// refresh - the same self-healing re-derivation the reminders use - so a
+    /// pruned row falls out of Spotlight by construction. Failure is non-fatal
+    /// and never kills a refresh.
+    private func donateToSpotlight(_ competitions: [Competition]) async {
+        let index = CSSearchableIndex.default()
+        do {
+            try await index.deleteAllSearchableItems()
+            try await index.indexAppEntities(competitions.map(CompetitionEntity.init))
+        } catch {
+            FileHandle.standardError.write(
+                Data("[comphunt] spotlight donation failed: \(error)\n".utf8))
+        }
     }
 
     #if os(iOS)
@@ -282,8 +310,7 @@ extension AppModel {
               let key = components.queryItems?.first(where: { $0.name == "key" })?.value,
               !key.isEmpty
         else { return }
-        let descriptor = FetchDescriptor<Competition>(predicate: #Predicate { $0.key == key })
-        guard let match = try? container.mainContext.fetch(descriptor).first else { return }
+        guard let match = competition(forKey: key) else { return }
         // The window filters on `list.query`; `list.filter` and `list.region`
         // are DERIVED from it for the menu bar and the widget. Clearing only the
         // derived pair left an active query in force, so a deep link to a

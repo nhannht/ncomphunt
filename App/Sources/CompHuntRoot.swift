@@ -1,7 +1,9 @@
 #if os(macOS)
 import AppKit
 #endif
+import AppIntents
 import CompHuntKit
+import CoreSpotlight
 import SwiftData
 import SwiftUI
 
@@ -11,7 +13,10 @@ import SwiftUI
 /// and one line of body. Keep it that way: an entry point that accretes logic
 /// is the file nobody thinks to look in.
 struct CompHuntRoot: Scene {
-    @State private var model = AppModel()
+    // No inline default: the instance is built in `init` so the same one can
+    // be registered with AppDependencyManager (an inline default would run
+    // first and a second, discarded AppModel would open the store twice).
+    @State private var model: AppModel
     #if os(iOS)
     @Environment(\.scenePhase) private var scenePhase
     #endif
@@ -21,6 +26,12 @@ struct CompHuntRoot: Scene {
     #endif
 
     init() {
+        // App Intents (Siri, Spotlight, Shortcuts) resolve entities through
+        // the one AppModel; registering it here is what lets a background
+        // intent launch reach the store without a second container.
+        let model = AppModel()
+        _model = State(initialValue: model)
+        AppDependencyManager.shared.add(dependency: model)
         Notifier.requestAuthorization()
     }
 
@@ -33,6 +44,15 @@ struct CompHuntRoot: Scene {
                     #if os(macOS)
                     NSApp.activate(ignoringOtherApps: true)
                     #endif
+                }
+                // Spotlight fallback: a result opened through the classic
+                // searchable-item activity (rather than OpenCompetitionIntent)
+                // still lands on the right row. The item identifier IS the
+                // dedupe key, so it rides the same deep-link route.
+                .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                    guard let key = activity.userInfo?[CSSearchableItemActivityIdentifier]
+                        as? String else { return }
+                    model.handleDeepLink(competitionDeepLink(key: key))
                 }
                 #if os(iOS)
                 // Background refresh stands in for the always-running macOS
