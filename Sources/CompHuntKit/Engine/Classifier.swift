@@ -41,12 +41,30 @@ public enum Classifier {
     /// compounds that do name the activity - `sáng tác thơ`, `nhiếp ảnh`,
     /// `ca khúc` - carry those cases instead. A syllable stays only where no
     /// unrelated compound contains it (`phim`, `múa`, `hát`).
+    /// English morphology note: a trailing `*` makes a needle word-INITIAL, so
+    /// `photograph*` carries photography, photographer and photographic in one
+    /// entry instead of three. Vietnamese needles never use it - Vietnamese
+    /// does not inflect, it compounds, and a compound's extra syllables change
+    /// the meaning (`ảnh` vs `ảnh hưởng`), which is the exact trap the
+    /// word-anchoring exists to close.
+    ///
+    /// Deliberately absent, measured on the live store 2026-08-03 alongside the
+    /// prize/organiser exclusions above: `tài chính` (finance) and `ngân hàng`
+    /// (banking) name the ORGANISER as often as the activity - "CLB Kinh Tế và
+    /// Tài Chính" hosting a debate flipped an academic row to business. `vẽ`
+    /// alone (the compounds `vẽ tranh`, `tranh cổ động` carry the real cases)
+    /// and bare `truyền thông`, which names a ministry and a faculty more often
+    /// than a contest.
     private static let keywordCategories: [(category: CompetitionCategory, keywords: [String])] = [
         (.ctf, ["*ctf", "capture the flag", "an toàn thông tin", "an ninh mạng"]),
         (.ai, [
             "machine learning", "ai challenge", "data science", "llm",
             "deep learning", "artificial intelligence", "ai ml", "generative ai",
             "trí tuệ nhân tạo", "khoa học dữ liệu", "robotics",
+            // Bare `ai` can never be a needle - it is the Vietnamese word for
+            // "who" - so the recurring VN contest-name compounds stand in,
+            // same allowlist trade as `vietnamContestBrands`.
+            "ai race", "ai festival", "ai thực chiến",
         ]),
         (.cp, [
             "competitive programming", "icpc", "informatics olympiad",
@@ -59,29 +77,34 @@ public enum Classifier {
         ]),
         (.hackathon, ["hackathon", "hack day", "makeathon", "devpost", "space apps"]),
         (.design, [
-            "design", "ui ux", "ux ui", "illustration", "logo", "branding",
-            "poster", "architecture", "thiết kế", "vẽ tranh", "mỹ thuật",
+            "design*", "ui ux", "ux ui", "illustrat*", "logo", "branding",
+            "poster", "architect*", "thiết kế", "vẽ tranh", "mỹ thuật",
             "đồ họa", "đồ hoạ", "hội họa", "hội hoạ", "kiến trúc",
+            "tranh cổ động", "sáng tác tranh", "digital art",
         ]),
         (.writing, [
             "viết", "viết luận", "sáng tác thơ", "làm thơ", "bài thơ", "thơ ca",
             "truyện", "truyện ngắn", "tản văn", "tùy bút", "sáng tác văn",
-            "slogan", "khẩu hiệu", "essay", "bài viết",
+            "slogan", "khẩu hiệu", "essay", "bài viết", "review",
         ]),
         (.media, [
             "nhiếp ảnh", "chụp ảnh", "bộ ảnh", "phim", "phim ngắn", "điện ảnh",
             "video", "clip", "âm nhạc", "ca khúc", "hát", "nhảy", "múa",
-            "biểu diễn", "photography", "photo", "film", "short film",
+            "biểu diễn", "photograph*", "photo", "film", "short film",
             "song contest", "songwriting", "tiktok",
+            "cuộc thi ảnh", "anime", "animation", "content creator",
+            "đa phương tiện", "sáng kiến truyền thông",
         ]),
         (.business, [
             "khởi nghiệp", "startup", "kinh doanh", "quản trị", "thương mại",
-            "business", "case competition", "esg", "pitch", "entrepreneur",
+            "business", "case competition", "esg", "pitch", "entrepreneur*",
+            "case study", "innovation", "đổi mới sáng tạo",
+            "kế toán", "kiểm toán", "môi giới",
         ]),
         (.academic, [
             "hùng biện", "diễn thuyết", "tìm hiểu", "toán học", "trắc nghiệm",
             "kiến thức", "olympic", "olympiad", "speech", "debate", "quiz",
-            "public speaking",
+            "public speaking", "học thuật",
         ]),
     ]
 
@@ -105,8 +128,24 @@ public enum Classifier {
                 return [category]
             }
         }
-        let haystack = normalized("\(dto.title) \(dto.tags.joined(separator: " "))")
-        return keywordCategories
+        let title = normalized("\(dto.title) \(dto.tags.joined(separator: " "))")
+        let fromTitle = matches(in: title)
+        if !fromTitle.isEmpty {
+            return fromTitle
+        }
+        // Details are a FALLBACK, never a second haystack merged into the
+        // first. A title that names the activity is the organiser speaking
+        // precisely; details are marketing prose that name-drops - a real
+        // estate contest whose blurb says AI is changing the industry must not
+        // become an AI competition. Measured on the live store (2026-08-03):
+        // merging the two haystacks flipped the leading tag on rows the title
+        // had already answered; consulting details only on a silent title
+        // rescued the same rows and flipped none.
+        return matches(in: normalized(dto.details))
+    }
+
+    private static func matches(in haystack: String) -> [CompetitionCategory] {
+        keywordCategories
             .filter { contains(haystack, any: $0.keywords) }
             .map(\.category)
     }
@@ -170,13 +209,21 @@ public enum Classifier {
     /// strict whole-word rule misses every one of them. Anchoring to the end of
     /// a word still rejects `impactforge`, where `ctf` sits mid-word followed by
     /// `orge`, which is the bug this whole change exists to close.
+    ///
+    /// A needle suffixed with `*` is the mirror: it matches at the START of a
+    /// word, which is where English inflects - `photograph*` reaches
+    /// photography, photographer and photographic without listing each form.
     private static func contains(_ haystack: String, any needles: [String]) -> Bool {
         needles.contains { needle in
-            guard needle.hasPrefix("*") else {
-                return haystack.contains(normalized(needle))
+            if needle.hasPrefix("*") {
+                let wordFinal = String(normalized(String(needle.dropFirst())).dropFirst())
+                return haystack.contains(wordFinal)
             }
-            let wordFinal = String(normalized(String(needle.dropFirst())).dropFirst())
-            return haystack.contains(wordFinal)
+            if needle.hasSuffix("*") {
+                let wordInitial = String(normalized(String(needle.dropLast())).dropLast())
+                return haystack.contains(wordInitial)
+            }
+            return haystack.contains(normalized(needle))
         }
     }
 
