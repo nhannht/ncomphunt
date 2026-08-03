@@ -108,6 +108,13 @@ struct CompetitionDetailPane: View {
                     if !competition.prize.isEmpty {
                         detailRow("Prize", competition.prize)
                     }
+                    // The comparable number beside the raw text, only when the
+                    // normalizer priced the row; "(from title)" marks a value
+                    // inferred from the headline rather than a prize field.
+                    if let summary = competition.prizeValue.summaryLine {
+                        detailRow("Value", competition.prizeValue.confidence == .inferred
+                            ? "\(summary) (from title)" : summary)
+                    }
                     detailRow("First seen", competition.firstSeen.formatted(date: .abbreviated, time: .shortened))
                 }
 

@@ -58,9 +58,11 @@ struct CompetitionTablePane: View {
                 }
             }
             .width(min: 100, ideal: 150)
-            TableColumn("Prize") { competition in
+            TableColumn("Prize", sortUsing: Self.comparator(for: .prize)) { competition in
                 cell(competition) {
-                    Text(competition.prize)
+                    // The normalized USD when the parser priced the row -
+                    // that is what the column sorts by - else the raw string.
+                    Text(competition.prizeValue.compactUSD ?? competition.prize)
                         .foregroundStyle(.green)
                 }
             }
@@ -129,6 +131,7 @@ struct CompetitionTablePane: View {
         switch sort {
         case .deadline: KeyPathComparator(\.deadlineForSort, order: .forward)
         case .newest: KeyPathComparator(\.firstSeen, order: .reverse)
+        case .prize: KeyPathComparator(\.prizeUSDForSort, order: .reverse)
         case .title: KeyPathComparator(\.title, order: .forward)
         case .source: KeyPathComparator(\.source, order: .forward)
         }
@@ -137,6 +140,7 @@ struct CompetitionTablePane: View {
     private static func listSort(for keyPath: PartialKeyPath<Competition>) -> ListSort? {
         if keyPath == \Competition.deadlineForSort { return .deadline }
         if keyPath == \Competition.firstSeen { return .newest }
+        if keyPath == \Competition.prizeUSDForSort { return .prize }
         if keyPath == \Competition.title { return .title }
         if keyPath == \Competition.source { return .source }
         return nil

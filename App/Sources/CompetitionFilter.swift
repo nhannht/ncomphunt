@@ -65,6 +65,7 @@ enum RegionFilter: String, CaseIterable, Identifiable {
 enum ListSort: String, CaseIterable, Identifiable {
     case deadline
     case newest
+    case prize
     case title
     case source
 
@@ -74,6 +75,7 @@ enum ListSort: String, CaseIterable, Identifiable {
         switch self {
         case .deadline: "Next deadline"
         case .newest: "Newest found"
+        case .prize: "Prize value"
         case .title: "Title"
         case .source: "Source"
         }
@@ -86,6 +88,13 @@ enum ListSort: String, CaseIterable, Identifiable {
                 < (b.nextRelevantDate ?? .distantFuture, b.title)
         case .newest:
             if a.firstSeen != b.firstSeen { return a.firstSeen > b.firstSeen }
+            return a.title < b.title
+        case .prize:
+            // Richest first; rows the normalizer could not price carry
+            // -infinity and sink below every priced one.
+            if a.prizeUSDForSort != b.prizeUSDForSort {
+                return a.prizeUSDForSort > b.prizeUSDForSort
+            }
             return a.title < b.title
         case .title:
             return a.title.localizedCaseInsensitiveCompare(b.title) == .orderedAscending

@@ -87,6 +87,13 @@ struct CompetitionExpandedView: View {
                 if !competition.prize.isEmpty {
                     detailRow("Prize", competition.prize)
                 }
+                // Same rule as the desktop pane: the comparable number only
+                // when the normalizer priced the row, marked when inferred
+                // from the title.
+                if let summary = competition.prizeValue.summaryLine {
+                    detailRow("Value", competition.prizeValue.confidence == .inferred
+                        ? "\(summary) (from title)" : summary)
+                }
                 detailRow("First seen", competition.firstSeen.formatted(date: .abbreviated, time: .shortened))
             }
 
