@@ -8,5 +8,8 @@ import WidgetKit
 struct CompHuntWidgetBundle: WidgetBundle {
     var body: some Widget {
         UpcomingContestsWidget()
+        #if os(iOS)
+        ContestActivityWidget()
+        #endif
     }
 }
