@@ -75,8 +75,8 @@ final class AppModel {
             container = try! ModelContainer(
                 for: Competition.self, UserProfile.self, configurations: config)
         }
-        // Adopt the persisted value BEFORE any refresh runs, so `isInitialSeed`
-        // means "this install has never refreshed", not "this launch has not".
+        // Adopt the persisted value at launch so the "last refreshed" labels
+        // report the install's history, not "never" on every start.
         let stored = UserDefaults.standard.double(forKey: Self.lastRefreshKey)
         if stored > 0 { lastRefresh = Date(timeIntervalSince1970: stored) }
         // Busy windows BEFORE the countdown starts, so the first menu-bar
