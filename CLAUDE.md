@@ -319,6 +319,31 @@ Rules that are easy to violate later:
   source-declared and re-deriving one from text would downgrade it - same
   reasoning that scopes `reclassifyUnplaced` to `.other`.
 
+## Live Activity (iOS only, COMP-37)
+
+One followed contest is glanceable in the Dynamic Island and on the Lock
+Screen. `ContestActivityPlan` (kit, pure, beside `WidgetSnapshot`) decides the
+face - registration countdown, pre-start countdown, or running-with-progress -
+and its `staleDate`; `ContestActivities` (app) starts/updates/ends via
+ActivityKit; `ContestActivityWidget` (extension, `#if os(iOS)` since the
+`Widget/` dir compiles into both widget targets) renders. Entry point is the
+"Follow Countdown" action in the actions menu; following and marking are
+independent axes. Rules that are easy to violate later:
+
+- **Timer-driven only.** `Text(timerInterval:)` / `ProgressView(timerInterval:)`
+  are ticked by the system; there are NO push updates and no server. Face flips
+  are applied by `reconcile` on every refresh and on foregrounding, and
+  `staleDate` dims the activity honestly in between.
+- **The 8-hour system cap is a plan rule, not a render rule.** A running face
+  is only offered when the whole contest fits inside the cap; multi-day events
+  (CTFs) count down to the start and then end. Do not "fix" a long CTF by
+  rendering past the cap - the system cuts the activity off anyway.
+- **`Activity.activities` IS the follow state.** No stored follow list; a
+  UserDefaults mirror would be a copy kept in sync by hand.
+- **No `isCurrent` guard in the plan.** A past registration deadline with no
+  end date reads as "over" for browsing, but a follower registered - the start
+  countdown is the face they are waiting for.
+
 ## Conventions
 
 - Swift 6 strict concurrency; sources return plain `CompetitionDTO` values,
