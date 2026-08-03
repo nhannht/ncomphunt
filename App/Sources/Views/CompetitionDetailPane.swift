@@ -18,6 +18,12 @@ struct CompetitionDetailPane: View {
     private var autoTranslate = true
     @AppStorage(TranslationPreferences.languageKey)
     private var readingLanguage = TranslationPreferences.defaultLanguage
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Movement transitions degrade to a cross-fade under Reduce Motion.
+    private var reveal: AnyTransition {
+        reduceMotion ? .opacity : AnyTransition(.blurReplace)
+    }
 
     var body: some View {
         if let competition {
@@ -39,6 +45,7 @@ struct CompetitionDetailPane: View {
                         Text(translation.title(original: competition.title))
                             .font(.title2.bold())
                             .textSelection(.enabled)
+                            .contentTransition(.opacity)
                         Spacer()
                         // Out of the actions menu and onto the surface: marking
                         // is the thing people came here to do, and two clicks
@@ -82,6 +89,7 @@ struct CompetitionDetailPane: View {
                 // be in, and showing an empty one on every row would be noise.
                 if competition.isMarked {
                     StatusSegments(competition: competition)
+                        .transition(reveal)
                 }
 
                 if let url = URL(string: competition.url) {
@@ -142,6 +150,8 @@ struct CompetitionDetailPane: View {
             }
             .padding(20)
             .frame(maxWidth: 680, alignment: .leading)
+            .animation(Motion.state, value: translation.showingTranslation)
+            .animation(Motion.state, value: competition.isMarked)
             .frame(maxWidth: .infinity)
         }
         .translationEffect($translation,

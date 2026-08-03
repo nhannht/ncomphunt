@@ -36,6 +36,7 @@ struct CompetitionListPane: View {
     @Binding var selectedID: PersistentIdentifier?
 
     @Environment(AppModel.self) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query private var competitions: [Competition]
     /// The single profile row, observed so a Settings edit re-ranks the
     /// list without a relaunch - the COMP-16 acceptance criterion.
@@ -122,13 +123,24 @@ struct CompetitionListPane: View {
         #endif
     }
 
+    /// Movement transitions degrade to a cross-fade under Reduce Motion -
+    /// the Motion.swift rule, applied at the use site.
+    private var reveal: AnyTransition {
+        reduceMotion ? .opacity : AnyTransition(.blurReplace)
+    }
+
     @ViewBuilder
     private func listOrEmpty(rows: [Competition]) -> some View {
-        if rows.isEmpty {
-            emptyState
-        } else {
-            competitionList(rows: rows)
+        Group {
+            if rows.isEmpty {
+                emptyState
+                    .transition(reveal)
+            } else {
+                competitionList(rows: rows)
+                    .transition(reveal)
+            }
         }
+        .animation(Motion.state, value: rows.isEmpty)
     }
 
     private func competitionList(rows: [Competition]) -> some View {
@@ -157,12 +169,16 @@ struct CompetitionListPane: View {
                     }
                 }
             }
+            // A sort, grouping, chip, or search change re-orders rows with
+            // movement instead of a teleport; the id-based diff keeps the
+            // glide scoped to rows that actually moved.
+            .animation(Motion.layout, value: rows.map(\.persistentModelID))
             .onChange(of: selectedID) {
                 // Minimal scroll: brings a deep-linked row on screen and
                 // reveals a selected row's tail; a fully visible row does
                 // not move.
                 guard let selectedID else { return }
-                withAnimation(.snappy) { proxy.scrollTo(selectedID) }
+                withAnimation(Motion.state) { proxy.scrollTo(selectedID) }
             }
         }
     }
@@ -226,11 +242,12 @@ struct CompetitionListPane: View {
             if isExpanded {
                 CompetitionExpandedView(competition: competition)
                     .padding(.top, 6)
+                    .transition(reveal)
             }
         }
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.snappy) {
+            withAnimation(Motion.layout) {
                 selectedID = isExpanded ? nil : id
             }
         }

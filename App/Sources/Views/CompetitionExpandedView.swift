@@ -17,6 +17,12 @@ struct CompetitionExpandedView: View {
     private var autoTranslate = true
     @AppStorage(TranslationPreferences.languageKey)
     private var readingLanguage = TranslationPreferences.defaultLanguage
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// Movement transitions degrade to a cross-fade under Reduce Motion.
+    private var reveal: AnyTransition {
+        reduceMotion ? .opacity : AnyTransition(.blurReplace)
+    }
 
     var body: some View {
         let fit = competition.fitValue
@@ -62,11 +68,13 @@ struct CompetitionExpandedView: View {
                 Text(translatedTitle)
                     .font(.footnote.weight(.semibold))
                     .textSelection(.enabled)
+                    .transition(reveal)
             }
 
             if competition.isMarked {
                 StatusSegments(competition: competition)
                     .font(.caption2)
+                    .transition(reveal)
             }
 
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 4) {
@@ -126,6 +134,8 @@ struct CompetitionExpandedView: View {
         }
         .padding(.leading, 14)
         .padding(.bottom, 4)
+        .animation(Motion.state, value: translation.showingTranslation)
+        .animation(Motion.state, value: competition.isMarked)
         .translationEffect($translation,
                            title: competition.title,
                            details: competition.details)
