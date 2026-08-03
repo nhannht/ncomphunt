@@ -114,7 +114,13 @@ map in the same turn.
   TITLES, so `value(prize:title:)` falls back there, tagged `.inferred`.
   Coverage is pinned against the live-store snapshot in
   `Fixtures/prize-corpus.json` - a rule change that moves real-world coverage
-  fails the CorpusCoverage suite in either direction)
+  fails the CorpusCoverage suite in either direction), `EffortEstimator`
+  (COMP-14: expected-hours band per category from wall duration -
+  `EffortEstimate` with `hours: ClosedRange`, `confidence`, `basis`. The trap
+  it exists to avoid is wall-versus-effort confusion: a 4-week AI contest is a
+  20-60h committed band, never its 672h wall; a 48h jeopardy CTF is a
+  12-19h slice; a CP round IS its wall. Missing dates degrade to a
+  low-confidence category default, never nil, so dateless rows still rank)
 - `Sources/CompHuntKit/YouTrack/` - sink filing COMP issues (a small menu item
   in the app, not a headline button)
 - `Sources/CompHuntKit/Query/` - `SearchQuery` (operators `category:`, `region:`,
