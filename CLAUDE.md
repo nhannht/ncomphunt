@@ -187,7 +187,13 @@ map in the same turn.
   `.fileImporter`. App Group id branches in `AppGroup.swift`: team-prefixed on
   macOS, bare `group.com.nhannht.ncomphunt` on iOS (each platform's
   entitlements files match). The YouTrack curl fallback is macOS-only (iOS
-  cannot shell out; a Cloudflare 1010 block surfaces as its 403). Settings has per-source checkboxes (UserDefaults
+  cannot shell out; a Cloudflare 1010 block surfaces as its 403). Settings is
+  tabbed on macOS (the `Settings` scene renders `TabView` as native toolbar
+  tabs: Sources+Refresh, API Keys, YouTrack, Calendar, Notifications,
+  Translation - one private subview per tab; iOS reuses the same subviews as
+  one grouped list, its own settings idiom in a sheet; the API Keys tab bumps
+  `settings.configRevision` AppStorage so the Sources tab re-reads Keychain
+  `isConfigured` across the tab boundary). Settings has per-source checkboxes (UserDefaults
   `source.<id>.enabled` via `SourcePreferences`) plus an API Keys section that
   stores keys in the Keychain (`CredentialStore`) with an "Import from
   secrets.yml" migration; search sources additionally gate on a 24h window
