@@ -65,33 +65,6 @@ struct CompetitionRow: View {
     }
 }
 
-extension Competition {
-    /// One relative phrase for "when does this matter": the deadline first,
-    /// then start, then end - or when it closed, for a finished competition.
-    /// Shared by the list row and the table's When column so the two styles
-    /// can never phrase the same date differently.
-    var whenLine: String {
-        let now = Date.now
-        if !isCurrent(asOf: now) {
-            // Say when it closed rather than falling through to the source
-            // name, which reads as though the row simply has no dates.
-            if let end = endDate {
-                return "ended \(end.formatted(.relative(presentation: .named)))"
-            }
-            if let deadline = registrationDeadline {
-                return "closed \(deadline.formatted(.relative(presentation: .named)))"
-            }
-            return source
-        }
-        if let deadline = registrationDeadline {
-            return "due \(deadline.formatted(.relative(presentation: .named)))"
-        }
-        if let start = startDate, start > now {
-            return "starts \(start.formatted(.relative(presentation: .named)))"
-        }
-        if let end = endDate, end > now {
-            return "ends \(end.formatted(.relative(presentation: .named)))"
-        }
-        return source
-    }
-}
+// `whenLine` moved to CompHuntKit (Schedule.swift): the When column now
+// sorts by the same date the phrase shows, and one derivation for both
+// lives where it is unit-testable.

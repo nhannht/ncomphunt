@@ -16,6 +16,38 @@ public extension Competition {
         if let next = nextRelevantDate { return next >= now }
         return true
     }
+
+    /// One relative phrase for "when does this matter": the deadline first,
+    /// then a future start, then a future end - or when it closed, for a
+    /// finished competition. Shared by the list row and the table's When
+    /// column so the two styles can never phrase the same date differently.
+    var whenLine: String {
+        guard let choice = whenChoice(asOf: .now) else { return source }
+        return "\(choice.verb) \(choice.date.formatted(.relative(presentation: .named)))"
+    }
+
+    /// The date whose phrase `whenLine` shows - the sort target for the When
+    /// column and the deadline sort. One derivation for both, because a
+    /// column that says "ends in 5 days" while sorting by a past start date
+    /// reads as a random order. nil (dateless) sorts last at the caller.
+    func whenMoment(asOf now: Date = .now) -> Date? {
+        whenChoice(asOf: now)?.date
+    }
+
+    /// The single decision behind both surfaces: which date matters and what
+    /// to call it. Ended rows say when they closed rather than falling
+    /// through to the source name, which reads as though they had no dates.
+    private func whenChoice(asOf now: Date) -> (verb: String, date: Date)? {
+        if !isCurrent(asOf: now) {
+            if let end = endDate { return ("ended", end) }
+            if let deadline = registrationDeadline { return ("closed", deadline) }
+            return nil
+        }
+        if let deadline = registrationDeadline { return ("due", deadline) }
+        if let start = startDate, start > now { return ("starts", start) }
+        if let end = endDate, end > now { return ("ends", end) }
+        return nil
+    }
 }
 
 public extension CompetitionCategory {

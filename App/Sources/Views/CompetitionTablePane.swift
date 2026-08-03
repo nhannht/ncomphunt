@@ -16,6 +16,10 @@ struct CompetitionTablePane: View {
     let rows: [Competition]
     @Binding var selectedID: PersistentIdentifier?
     @Binding var sort: ListSort
+    /// Whether the current sort runs opposite its canonical direction -
+    /// toggled by re-clicking the sorted column's header, reset by MainWindow
+    /// whenever the sort itself changes.
+    @Binding var flipped: Bool
 
     @Environment(\.openURL) private var openURL
 
@@ -123,17 +127,28 @@ struct CompetitionTablePane: View {
 
     // MARK: One sort truth
 
-    /// The table shows whatever `ListSort` says, in that sort's canonical
-    /// direction; a header click picks the matching case. Direction toggles
-    /// are deliberately coerced back to canonical - `ListSort` has no
-    /// direction, and inventing one here would fork the truth.
+    /// The table shows whatever `ListSort` says; a header click picks the
+    /// matching case, and clicking the already-sorted column flips the
+    /// direction - the spreadsheet contract. Direction lives in the shared
+    /// `flipped` binding rather than a second table-only state, so the list
+    /// style and the header chevron keep reading one truth.
     private var sortOrder: Binding<[KeyPathComparator<Competition>]> {
         Binding {
-            [Self.comparator(for: sort)]
+            var comparator = Self.comparator(for: sort)
+            if flipped {
+                comparator.order = comparator.order == .forward ? .reverse : .forward
+            }
+            return [comparator]
         } set: { order in
             guard let clicked = order.first,
                   let mapped = Self.listSort(for: clicked.keyPath) else { return }
-            sort = mapped
+            if mapped == sort {
+                flipped.toggle()
+            } else {
+                // A new column starts at its canonical direction; MainWindow
+                // resets `flipped` when it sees the sort change.
+                sort = mapped
+            }
         }
     }
 
@@ -160,8 +175,8 @@ struct CompetitionTablePane: View {
 }
 
 extension Competition {
-    /// Comparator target for the When column: the same "next relevant date,
-    /// dateless last" rule `ListSort.deadline` sorts by.
-    fileprivate var deadlineForSort: Date { nextRelevantDate ?? .distantFuture }
+    /// Comparator target for the When column: the same date its cell shows
+    /// (`whenMoment`), dateless last - the rule `ListSort.deadline` sorts by.
+    fileprivate var deadlineForSort: Date { whenMoment() ?? .distantFuture }
 }
 #endif

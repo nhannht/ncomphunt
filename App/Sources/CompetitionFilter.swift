@@ -86,8 +86,12 @@ enum ListSort: String, CaseIterable, Identifiable {
     func areInOrder(_ a: Competition, _ b: Competition) -> Bool {
         switch self {
         case .deadline:
-            return (a.nextRelevantDate ?? .distantFuture, a.title)
-                < (b.nextRelevantDate ?? .distantFuture, b.title)
+            // The date the When column SHOWS, not `nextRelevantDate`: an
+            // ongoing contest whose cell says "ends in 5 days" must sort by
+            // that end, not by its own past start date - sorting by a date
+            // the person cannot see reads as a random order.
+            return (a.whenMoment() ?? .distantFuture, a.title)
+                < (b.whenMoment() ?? .distantFuture, b.title)
         case .newest:
             if a.firstSeen != b.firstSeen { return a.firstSeen > b.firstSeen }
             return a.title < b.title

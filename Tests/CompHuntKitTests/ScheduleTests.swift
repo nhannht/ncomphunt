@@ -107,3 +107,34 @@ private func comp(
         #expect(CompetitionCategory.other.shortCode == "")
     }
 }
+
+/// `whenMoment` is the sort target for the When column and the deadline
+/// sort: the SAME date whose phrase `whenLine` shows. The regression it
+/// pins: an ongoing contest used to sort by its past start date while its
+/// cell said "ends in 5 days", which read as a random order.
+@Suite struct WhenMoment {
+    @Test func deadlineOutranksAFutureStart() {
+        let both = comp("both",
+                        start: now.addingTimeInterval(5 * 86_400),
+                        deadline: now.addingTimeInterval(2 * 86_400))
+        #expect(both.whenMoment(asOf: now) == now.addingTimeInterval(2 * 86_400))
+    }
+
+    @Test func anOngoingContestSortsByItsEndNotItsPastStart() {
+        let ongoing = comp("ongoing",
+                           start: now.addingTimeInterval(-2 * 86_400),
+                           end: now.addingTimeInterval(5 * 86_400))
+        #expect(ongoing.whenMoment(asOf: now) == now.addingTimeInterval(5 * 86_400))
+    }
+
+    @Test func aDatelessRowHasNoMomentAndSortsLastAtTheCaller() {
+        #expect(comp("dateless").whenMoment(asOf: now) == nil)
+    }
+
+    @Test func anEndedContestKeepsItsEndDate() {
+        let ended = comp("ended",
+                         start: now.addingTimeInterval(-5 * 86_400),
+                         end: now.addingTimeInterval(-86_400))
+        #expect(ended.whenMoment(asOf: now) == now.addingTimeInterval(-86_400))
+    }
+}
