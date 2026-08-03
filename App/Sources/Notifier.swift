@@ -146,33 +146,55 @@ enum Notifier {
 
     // MARK: authorization, made visible
 
-    /// Where the person re-grants notification access, in the platform's own
-    /// wording. Same shape as `CalendarSyncService.accessSettingsPath`.
-    #if os(macOS)
-    private static let accessSettingsPath = "System Settings > Notifications > nCompHunt"
-    #else
-    private static let accessSettingsPath = "Settings > Apps > nCompHunt > Notifications"
-    #endif
+    /// The Settings row's view of the OS permission: what to say, and whether
+    /// the system settings pane is where a fix lives. The flag exists so the
+    /// row can offer a button instead of spelling a settings path in prose.
+    struct PermissionStatus {
+        let text: String
+        let fixableInSystemSettings: Bool
+    }
 
     /// One-line, user-facing status for the Settings row.
     ///
     /// Without this a denial is completely invisible: `requestAuthorization`
     /// reports it only to a discarded return value, and `add(_:)` does not
     /// throw when unauthorized - it just never shows anything.
-    static func authorizationStatusText() async -> String {
+    static func permissionStatus() async -> PermissionStatus {
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
             return settings.alertSetting == .enabled
-                ? "Allowed"
-                : "Allowed, but alerts are turned off in \(accessSettingsPath)."
+                ? PermissionStatus(text: "Allowed", fixableInSystemSettings: false)
+                : PermissionStatus(text: "Allowed, but alerts are turned off.",
+                                   fixableInSystemSettings: true)
         case .denied:
-            return "Notifications denied. Enable them in \(accessSettingsPath)."
+            return PermissionStatus(text: "Notifications are denied.",
+                                    fixableInSystemSettings: true)
         case .notDetermined:
-            return "Not requested yet."
+            return PermissionStatus(text: "Not requested yet.",
+                                    fixableInSystemSettings: false)
         @unknown default:
-            return "Unknown."
+            return PermissionStatus(text: "Unknown.", fixableInSystemSettings: false)
         }
+    }
+
+    /// Jump straight to this app's notification pane, so re-granting is one
+    /// click rather than a hunt through settings.
+    @MainActor
+    static func openSystemNotificationSettings() {
+        #if os(macOS)
+        // The `id` query lands on the app's own sub-pane, not the top-level
+        // Notifications list.
+        let id = Bundle.main.bundleIdentifier ?? ""
+        if let url = URL(string:
+            "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(id)") {
+            NSWorkspace.shared.open(url)
+        }
+        #else
+        if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+        #endif
     }
 }
 

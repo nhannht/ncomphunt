@@ -499,11 +499,22 @@ private struct NotificationsSettings: View {
     /// The OS permission line. Read asynchronously because
     /// `notificationSettings()` is async, and shown because a denial is
     /// otherwise completely invisible - nothing throws when it happens.
-    @State private var status = "Checking..."
+    @State private var permission = Notifier.PermissionStatus(
+        text: "Checking...", fixableInSystemSettings: false)
 
     var body: some View {
         Section("Notifications") {
-            LabeledContent("Permission", value: status)
+            LabeledContent("Permission") {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(permission.text)
+                        .multilineTextAlignment(.trailing)
+                    if permission.fixableInSystemSettings {
+                        Button("Open Notification Settings") {
+                            Notifier.openSystemNotificationSettings()
+                        }
+                    }
+                }
+            }
 
             Toggle(isOn: Binding(
                 get: { model.digestEnabled },
@@ -553,7 +564,7 @@ private struct NotificationsSettings: View {
             }
         }
         .task {
-            status = await Notifier.authorizationStatusText()
+            permission = await Notifier.permissionStatus()
             model.loadReminderStatus()
         }
     }
