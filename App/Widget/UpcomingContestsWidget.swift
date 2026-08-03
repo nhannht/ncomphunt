@@ -201,11 +201,26 @@ private struct WidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: ContestEntry
 
+    /// The menu-bar semantic: the best-fit pick, falling back to the soonest
+    /// contest - what every single-contest face features.
+    private var featured: WidgetContest? {
+        entry.topPick?.contest ?? entry.contests.first
+    }
+
     var body: some View {
         Group {
             switch family {
             case .systemSmall:
                 SmallView(pick: entry.topPick, next: entry.contests.first)
+            #if os(iOS)
+            case .accessoryInline:
+                InlineAccessoryView(featured: featured)
+            case .accessoryCircular:
+                CircularAccessoryView(featured: featured)
+            case .accessoryRectangular:
+                RectangularAccessoryView(featured: featured,
+                                         reason: entry.topPick?.reason)
+            #endif
             default:
                 MediumView(contests: entry.contests, pick: entry.topPick)
             }
@@ -217,12 +232,25 @@ private struct WidgetView: View {
 // MARK: - Widget
 
 struct UpcomingContestsWidget: Widget {
+    // Accessory families are Lock Screen / StandBy surfaces, so iOS only; the
+    // macOS extension keeps exactly the two desktop families. A family added
+    // here without its own WidgetView case silently renders an un-tuned
+    // layout, which is why the switch above has one case per family.
+    #if os(iOS)
+    private static let families: [WidgetFamily] = [
+        .systemSmall, .systemMedium,
+        .accessoryInline, .accessoryCircular, .accessoryRectangular,
+    ]
+    #else
+    private static let families: [WidgetFamily] = [.systemSmall, .systemMedium]
+    #endif
+
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: "UpcomingContestsWidget", provider: ContestProvider()) { entry in
             WidgetView(entry: entry)
         }
         .configurationDisplayName("Upcoming Contests")
         .description("The next competitions from nCompHunt, with a live countdown.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies(Self.families)
     }
 }
