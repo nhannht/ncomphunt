@@ -23,6 +23,9 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Contest countdown Live Activity (COMP-37). -->
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<!-- BGAppRefreshTask id BackgroundRefresh.swift registers and schedules. -->
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>

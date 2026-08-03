@@ -117,6 +117,9 @@ final class AppModel {
         let all = allCompetitions()
         await CalendarSyncService.shared.syncIfEnabled(competitions: all)
         await ReminderScheduler.shared.reschedule(competitions: all)
+        #if os(iOS)
+        await ContestActivities.reconcile(competitions: all)
+        #endif
         adoptReminderState()
         await refreshCodeforcesRating()
     }
@@ -143,6 +146,16 @@ final class AppModel {
     private func allCompetitions() -> [Competition] {
         (try? container.mainContext.fetch(FetchDescriptor<Competition>())) ?? []
     }
+
+    #if os(iOS)
+    /// Foreground reconcile for the Live Activity: a face flip (registration
+    /// -> pre-start -> running) that happened while the app was backgrounded
+    /// is applied the moment the app is looked at, not only on the next
+    /// refresh cycle.
+    func reconcileActivities() async {
+        await ContestActivities.reconcile(competitions: allCompetitions())
+    }
+    #endif
 
     private static let lastSearchFetchKey = "lastSearchFetch"
 

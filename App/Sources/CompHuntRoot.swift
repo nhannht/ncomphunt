@@ -12,6 +12,9 @@ import SwiftUI
 /// is the file nobody thinks to look in.
 struct CompHuntRoot: Scene {
     @State private var model = AppModel()
+    #if os(iOS)
+    @Environment(\.scenePhase) private var scenePhase
+    #endif
 
     #if os(macOS)
     static let dashboardWindowID = "dashboard"
@@ -41,6 +44,12 @@ struct CompHuntRoot: Scene {
         #if os(iOS)
         .backgroundTask(.appRefresh(BackgroundRefresh.taskID)) {
             await BackgroundRefresh.perform(model: model)
+        }
+        // A Live Activity face flip that fell due while backgrounded is
+        // applied on the next look, not the next refresh cycle.
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await model.reconcileActivities() }
         }
         #endif
 

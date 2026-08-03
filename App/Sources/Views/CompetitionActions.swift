@@ -34,6 +34,9 @@ struct CompetitionActionsMenu: View {
                 CompetitionActions.addToCalendar(competition)
             }
         }
+        #if os(iOS)
+        FollowActivityButton(competition: competition)
+        #endif
         Divider()
         // The mark leads: it is the one action that changes what the app does
         // for you afterwards, where everything above it is a one-off.
@@ -79,6 +82,28 @@ enum CompetitionActions {
     }
     #endif
 }
+
+#if os(iOS)
+/// Follow one contest as a Live Activity (COMP-37): a countdown in the
+/// Dynamic Island and on the Lock Screen. Sits with the other one-off actions;
+/// the mark section below stays the subscription model for notifications -
+/// following and marking are deliberately independent.
+private struct FollowActivityButton: View {
+    let competition: Competition
+
+    var body: some View {
+        if ContestActivities.isFollowing(key: competition.key) {
+            Button("Stop Following", systemImage: "stop.circle") {
+                ContestActivities.unfollow(key: competition.key)
+            }
+        } else if ContestActivities.canFollow(competition) {
+            Button("Follow Countdown", systemImage: "timer") {
+                ContestActivities.follow(competition)
+            }
+        }
+    }
+}
+#endif
 
 /// Small menu item that files the competition into the YouTrack COMP project,
 /// then flips to a link to the issue. Hidden entirely when YouTrack is not
