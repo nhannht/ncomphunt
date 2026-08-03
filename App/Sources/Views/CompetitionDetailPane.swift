@@ -20,10 +20,7 @@ struct CompetitionDetailPane: View {
     private var readingLanguage = TranslationPreferences.defaultLanguage
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Movement transitions degrade to a cross-fade under Reduce Motion.
-    private var reveal: AnyTransition {
-        reduceMotion ? .opacity : AnyTransition(.blurReplace)
-    }
+    private var reveal: AnyTransition { Motion.reveal(reduced: reduceMotion) }
 
     var body: some View {
         if let competition {

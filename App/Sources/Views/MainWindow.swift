@@ -33,6 +33,7 @@ struct MainWindow: View {
 
     @State private var isResolving = false
     @State private var queryMessage: String?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
     #endif
@@ -125,6 +126,7 @@ struct MainWindow: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
                     .padding(.bottom, 4)
+                    .transition(Motion.reveal(reduced: reduceMotion))
             }
             CompetitionListPane(
                 query: query, sort: $sort, sortFlipped: $sortFlipped,
@@ -134,6 +136,7 @@ struct MainWindow: View {
                 onRelax: relax, onClear: clearFilters,
                 selectedID: $selectedID)
         }
+        .animation(Motion.state, value: queryMessage)
         .searchable(text: $queryText, prompt: searchPrompt)
         .searchSuggestions {
             ForEach(SearchQuery.suggestions(for: queryText)) { suggestion in
@@ -202,24 +205,24 @@ struct MainWindow: View {
                 }
                 .help("Sort, group, and filter by region")
 
-                if isResolving {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button("Ask", systemImage: "sparkles", action: resolveSearchText)
-                        .disabled(
-                            generator.unavailableReason != nil
-                                || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        .help(generator.unavailableReason
-                            ?? "Turn what you typed into filters")
-                }
+                // The button IS the progress indicator: the sparkles shimmer
+                // while Apple Intelligence resolves, instead of the control
+                // being swapped out from under the pointer.
+                Button("Ask", systemImage: "sparkles", action: resolveSearchText)
+                    .symbolEffect(.variableColor.iterative, isActive: isResolving)
+                    .disabled(
+                        isResolving
+                            || generator.unavailableReason != nil
+                            || queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .help(generator.unavailableReason
+                        ?? "Turn what you typed into filters")
 
-                if model.isRefreshing {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Button("Refresh", systemImage: "arrow.clockwise") {
-                        Task { await model.refresh() }
-                    }
+                // Same idea: the arrow spins in place while a refresh runs.
+                Button("Refresh", systemImage: "arrow.clockwise") {
+                    Task { await model.refresh() }
                 }
+                .symbolEffect(.rotate, isActive: model.isRefreshing)
+                .disabled(model.isRefreshing)
             }
             #if os(iOS)
             ToolbarItem(placement: .topBarTrailing) {

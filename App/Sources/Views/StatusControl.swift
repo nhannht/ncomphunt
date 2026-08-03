@@ -20,7 +20,15 @@ struct MarkButton: View {
         } label: {
             Label(competition.isMarked ? "Unmark" : "Mark",
                   systemImage: competition.isMarked ? "star.fill" : "star")
+                // The one moment in the app worth a little celebration.
+                .symbolEffect(.bounce, options: .nonRepeating,
+                              value: competition.isMarked)
         }
+        #if os(iOS)
+        .sensoryFeedback(.success, trigger: competition.isMarked) { _, marked in
+            marked
+        }
+        #endif
         .help(competition.isMarked
             ? "Remove your mark and its deadline reminders"
             : "Mark this and get reminded before its deadline")

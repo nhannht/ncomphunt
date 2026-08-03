@@ -123,11 +123,7 @@ struct CompetitionListPane: View {
         #endif
     }
 
-    /// Movement transitions degrade to a cross-fade under Reduce Motion -
-    /// the Motion.swift rule, applied at the use site.
-    private var reveal: AnyTransition {
-        reduceMotion ? .opacity : AnyTransition(.blurReplace)
-    }
+    private var reveal: AnyTransition { Motion.reveal(reduced: reduceMotion) }
 
     @ViewBuilder
     private func listOrEmpty(rows: [Competition]) -> some View {

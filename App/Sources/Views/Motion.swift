@@ -18,4 +18,11 @@ enum Motion {
     static let layout = Animation.smooth(duration: 0.35)
     /// Celebratory accents: the rare moment worth a little bounce.
     static let emphasis = Animation.bouncy(duration: 0.4)
+
+    /// The standard reveal for conditional content: blur in, or a plain
+    /// cross-fade when the person asked for Reduce Motion. Call with the
+    /// view's `accessibilityReduceMotion` environment value.
+    static func reveal(reduced: Bool) -> AnyTransition {
+        reduced ? .opacity : AnyTransition(.blurReplace)
+    }
 }
