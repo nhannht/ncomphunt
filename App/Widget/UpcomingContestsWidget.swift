@@ -7,6 +7,9 @@ import WidgetKit
 struct ContestEntry: TimelineEntry {
     let date: Date
     let contests: [WidgetContest]
+    /// The app-resolved best-fit pick (COMP-19); nil when the snapshot was
+    /// written by an older build, so a stale file renders the plain list.
+    let topPick: WidgetTopPick?
 }
 
 /// Reads the App Group snapshot the app writes. The countdown text updates on its
@@ -14,17 +17,24 @@ struct ContestEntry: TimelineEntry {
 /// LIST hourly - cheap on the WidgetKit reload budget.
 struct ContestProvider: TimelineProvider {
     func placeholder(in context: Context) -> ContestEntry {
-        ContestEntry(date: .now, contests: Self.sample)
+        ContestEntry(date: .now, contests: Self.sample, topPick: Self.samplePick)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ContestEntry) -> Void) {
-        let contests = readWidgetSnapshot()?.contests ?? Self.sample
-        completion(ContestEntry(date: .now, contests: contests))
+        if let snapshot = readWidgetSnapshot() {
+            completion(ContestEntry(date: .now, contests: snapshot.contests,
+                                    topPick: snapshot.topPick))
+        } else {
+            completion(ContestEntry(date: .now, contests: Self.sample,
+                                    topPick: Self.samplePick))
+        }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<ContestEntry>) -> Void) {
         let now = Date.now
-        let entry = ContestEntry(date: now, contests: readWidgetSnapshot()?.contests ?? [])
+        let snapshot = readWidgetSnapshot()
+        let entry = ContestEntry(date: now, contests: snapshot?.contests ?? [],
+                                 topPick: snapshot?.topPick)
         let refresh = Calendar.current.date(byAdding: .hour, value: 1, to: now)
             ?? now.addingTimeInterval(3_600)
         completion(Timeline(entries: [entry], policy: .after(refresh)))
@@ -41,6 +51,10 @@ struct ContestProvider: TimelineProvider {
         WidgetContest(key: "s4", title: "Junction Hackathon", categoryCode: "Hack", url: "",
                       date: Date.now.addingTimeInterval(500_000)),
     ]
+
+    static let samplePick = WidgetTopPick(
+        contest: sample[1], score: 85, headline: "Strong fit",
+        reason: "Competitive Programming matches your interests")
 }
 
 // MARK: - Deep link
@@ -93,23 +107,33 @@ private struct ContestRow: View {
     }
 }
 
+/// Small family: ONE featured competition - the best-fit pick with its
+/// strongest reason when the snapshot carries one, else the soonest contest
+/// (the older-build and empty-profile fallback).
 private struct SmallView: View {
-    let contest: WidgetContest?
+    let pick: WidgetTopPick?
+    let next: WidgetContest?
+
+    private var featured: WidgetContest? { pick?.contest ?? next }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "trophy.fill").foregroundStyle(.yellow)
-                Text("Next contest").font(.caption2).foregroundStyle(.secondary)
+                Text(pick != nil ? "Top pick" : "Next contest")
+                    .font(.caption2).foregroundStyle(.secondary)
             }
-            if let contest {
+            if let featured {
                 HStack(alignment: .top, spacing: 4) {
-                    categoryDot(contest.categoryCode)
+                    categoryDot(featured.categoryCode)
                         .padding(.top, 4)
-                    Text(contest.title).font(.footnote.weight(.semibold)).lineLimit(2)
+                    Text(featured.title).font(.footnote.weight(.semibold)).lineLimit(2)
+                }
+                if let reason = pick?.reason {
+                    Text(reason).font(.caption2).foregroundStyle(.secondary).lineLimit(2)
                 }
                 Spacer(minLength: 0)
-                Countdown(date: contest.date).font(.caption)
+                Countdown(date: featured.date).font(.caption)
             } else {
                 Spacer(minLength: 0)
                 Text("No upcoming contests").font(.caption).foregroundStyle(.secondary)
@@ -117,25 +141,51 @@ private struct SmallView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .widgetURL(contest.map(deepLink))
+        .widgetURL(featured.map(deepLink))
     }
 }
 
+/// Medium family: the pick featured on top with its verdict line, then the
+/// next deadlines (excluding the pick - one row per competition, never two).
+/// Without a pick, the plain four-row list this widget always rendered.
 private struct MediumView: View {
     let contests: [WidgetContest]
+    let pick: WidgetTopPick?
+
+    private var deadlines: [WidgetContest] {
+        guard let pick else { return Array(contests.prefix(4)) }
+        return Array(contests.filter { $0.key != pick.contest.key }.prefix(3))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Image(systemName: "trophy.fill").foregroundStyle(.yellow)
-                Text("Upcoming contests").font(.caption.weight(.semibold))
+            if let pick {
+                Link(destination: deepLink(for: pick.contest)) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "trophy.fill").foregroundStyle(.yellow)
+                            Text(pick.contest.title)
+                                .font(.caption.weight(.semibold)).lineLimit(1)
+                            Spacer(minLength: 4)
+                            Countdown(date: pick.contest.date)
+                        }
+                        Text(pick.reason.map { "\(pick.headline) · \($0)" } ?? pick.headline)
+                            .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                Divider()
+            } else {
+                HStack {
+                    Image(systemName: "trophy.fill").foregroundStyle(.yellow)
+                    Text("Upcoming contests").font(.caption.weight(.semibold))
+                }
             }
-            if contests.isEmpty {
+            if deadlines.isEmpty && pick == nil {
                 Spacer(minLength: 0)
                 Text("No upcoming contests").font(.caption).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
             } else {
-                ForEach(contests.prefix(4)) { contest in
+                ForEach(deadlines) { contest in
                     Link(destination: deepLink(for: contest)) {
                         ContestRow(contest: contest)
                     }
@@ -155,9 +205,9 @@ private struct WidgetView: View {
         Group {
             switch family {
             case .systemSmall:
-                SmallView(contest: entry.contests.first)
+                SmallView(pick: entry.topPick, next: entry.contests.first)
             default:
-                MediumView(contests: entry.contests)
+                MediumView(contests: entry.contests, pick: entry.topPick)
             }
         }
         .containerBackground(.fill.tertiary, for: .widget)

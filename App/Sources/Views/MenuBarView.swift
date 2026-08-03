@@ -16,12 +16,43 @@ struct MenuBarView: View {
             .map { $0 }
     }
 
+    /// The best-fit pick (COMP-19), under the same category/region lens the
+    /// countdown label uses, so the dropdown explains the row the label is
+    /// already counting down to.
+    private var pick: (competition: Competition, fit: RankedCompetition)? {
+        let category = CompetitionFilter(
+            rawValue: UserDefaults.standard.string(forKey: "list.filter") ?? "all")?.categoryValue
+        let region = RegionFilter(
+            rawValue: UserDefaults.standard.string(forKey: "list.region") ?? "all")?.regionValue
+        return FitScorer.topPick(
+            in: competitions, category: category, region: region,
+            profile: FitContext.current, busy: FitContext.currentBusy)
+    }
+
     var body: some View {
-        if upcoming.isEmpty {
+        let pick = pick
+
+        if let pick {
+            Section("Top pick") {
+                Button {
+                    if let url = URL(string: pick.competition.url) {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    Text(menuLine(for: pick.competition))
+                }
+                Text(fitLine(for: pick.fit))
+            }
+        }
+
+        // The pick already has its own row above; repeating it here would
+        // read as two different competitions.
+        let deadlines = upcoming.filter { $0.key != pick?.competition.key }
+        if deadlines.isEmpty && pick == nil {
             Text("No upcoming deadlines")
-        } else {
+        } else if !deadlines.isEmpty {
             Section("Next deadlines") {
-                ForEach(upcoming) { competition in
+                ForEach(deadlines) { competition in
                     Button {
                         if let url = URL(string: competition.url) {
                             NSWorkspace.shared.open(url)
@@ -63,6 +94,16 @@ struct MenuBarView: View {
         }
         if let date = competition.nextRelevantDate {
             line += "  (\(date.formatted(.relative(presentation: .named))))"
+        }
+        return line
+    }
+
+    /// The why, as a disabled menu line under the pick: score, band, and the
+    /// strongest reason when one exists.
+    private func fitLine(for fit: RankedCompetition) -> String {
+        var line = "fit \(fit.score) · \(fit.headline)"
+        if let reason = fit.reasons.first {
+            line += " · \(reason)"
         }
         return line
     }

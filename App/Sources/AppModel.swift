@@ -190,25 +190,36 @@ struct MenuBarStatus: Equatable {
 
 extension AppModel {
     /// Recompute the menu-bar countdown from the current store and the persisted
-    /// category + region filters, so the window and the menu bar agree.
+    /// category + region filters, so the window and the menu bar agree. The
+    /// countdown target is the BEST-FIT upcoming competition (COMP-19), not
+    /// merely the soonest - the surface seen every day is where the ranking
+    /// earns its keep.
     func recomputeMenuBar(now: Date = .now) {
         let all = (try? container.mainContext.fetch(FetchDescriptor<Competition>())) ?? []
+        // The model adopts the profile itself: this runs from launch, every
+        // minute, before any window body has ever evaluated - it cannot wait
+        // for the list pane's adoption pass.
+        FitContext.adopt(
+            (try? container.mainContext.fetch(FetchDescriptor<UserProfile>()))?
+                .first?.snapshot() ?? .defaults)
         updateWidgetSnapshot(from: all, now: now)
 
         let category = CompetitionFilter(
             rawValue: UserDefaults.standard.string(forKey: "list.filter") ?? "all")?.categoryValue
         let region = RegionFilter(
             rawValue: UserDefaults.standard.string(forKey: "list.region") ?? "all")?.regionValue
-        guard let next = nextUpcoming(in: all, category: category, region: region, now: now),
-              let date = next.nextRelevantDate else {
+        guard let pick = FitScorer.topPick(
+            in: all, category: category, region: region,
+            profile: FitContext.current, busy: FitContext.currentBusy, now: now),
+            let date = pick.competition.nextRelevantDate else {
             menuBarStatus = nil
             return
         }
         menuBarStatus = MenuBarStatus(
-            code: next.category.shortCode,
+            code: pick.competition.category.shortCode,
             countdown: compactCountdown(to: date, now: now),
-            url: next.url,
-            title: next.title)
+            url: pick.competition.url,
+            title: pick.competition.title)
     }
 
     /// Write the next-contests snapshot for the widget every recompute (cheap
@@ -216,9 +227,18 @@ extension AppModel {
     /// changes - the countdown itself ticks via the widget's auto-updating Text,
     /// so a per-minute reload would waste the WidgetKit reload budget.
     private func updateWidgetSnapshot(from all: [Competition], now: Date) {
-        let snapshot = widgetSnapshot(from: all, now: now)
+        let snapshot = widgetSnapshot(
+            from: all, profile: FitContext.current,
+            busy: FitContext.currentBusy, now: now)
         writeWidgetSnapshot(snapshot)
-        let keys = snapshot.contests.map(\.key)
+        // The pick's key and score join the change detection so a re-ranked
+        // featured row reloads too; its REASON text does not, because a
+        // countdown-bearing reason changes every minute and the hourly
+        // timeline policy already caps that staleness.
+        var keys = snapshot.contests.map(\.key)
+        if let pick = snapshot.topPick {
+            keys.append("pick:\(pick.contest.key):\(pick.score)")
+        }
         if keys != lastSnapshotKeys {
             lastSnapshotKeys = keys
             WidgetCenter.shared.reloadAllTimelines()
