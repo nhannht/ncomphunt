@@ -104,7 +104,17 @@ map in the same turn.
   `RefreshEngine` (TaskGroup fan-out, dedupe/upsert preserving `firstSeen`,
   prune of untracked dateless rows unseen 14 days), `SourceRegistry`
   (`SourceID`: display names, config hints, metered-search flag; the app builds
-  its source list from it per refresh)
+  its source list from it per refresh), `PrizeNormalizer` (COMP-13: free-text
+  prize strings to one comparable USD number - `PrizeValue` with
+  `topPrizeUSD`/`totalPoolUSD`/`nonCash`. Extraction, never comprehension: a
+  number counts only when a currency marker touches it, ambiguity resolves to
+  nil, static FX table refreshed per release, deliberately NO model - the value
+  is derived on read (`Competition.prizeValue`, memoized, never persisted), so
+  nondeterminism would reshuffle the ranked list. ybox serves amounts in
+  TITLES, so `value(prize:title:)` falls back there, tagged `.inferred`.
+  Coverage is pinned against the live-store snapshot in
+  `Fixtures/prize-corpus.json` - a rule change that moves real-world coverage
+  fails the CorpusCoverage suite in either direction)
 - `Sources/CompHuntKit/YouTrack/` - sink filing COMP issues (a small menu item
   in the app, not a headline button)
 - `Sources/CompHuntKit/Query/` - `SearchQuery` (operators `category:`, `region:`,
