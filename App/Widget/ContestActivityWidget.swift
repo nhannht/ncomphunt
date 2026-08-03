@@ -55,26 +55,6 @@ struct ContestActivityWidget: Widget {
     }
 }
 
-/// The ticking countdown. `Text(timerInterval:)` renders "H:MM:SS", which for
-/// a contest days away reads as a wall of digits - so far-out targets show the
-/// system's relative phrase ("in 3 days") instead. The branch is fixed at
-/// render time, and every reconcile re-renders, so a countdown crossing the
-/// day boundary flips on the next refresh or foreground.
-private struct CountdownText: View {
-    let target: Date
-
-    var body: some View {
-        if target.timeIntervalSinceNow > 24 * 3600 {
-            Text(target, style: .relative)
-                .multilineTextAlignment(.trailing)
-        } else {
-            Text(timerInterval: min(.now, target)...target, countsDown: true)
-                .multilineTextAlignment(.trailing)
-                .monospacedDigit()
-        }
-    }
-}
-
 /// The verb line every surface shares, via the kit's one wording source.
 private struct PhaseLine: View {
     let state: ContestActivityAttributes.ContentState
