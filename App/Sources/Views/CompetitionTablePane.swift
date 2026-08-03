@@ -59,6 +59,8 @@ struct CompetitionTablePane: View {
                 cell(competition) {
                     Text(competition.whenLine)
                         .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                        .animation(Motion.state, value: competition.whenLine)
                 }
             }
             .width(min: 100, ideal: 150)
@@ -78,6 +80,8 @@ struct CompetitionTablePane: View {
                     Text("\(competition.fitValue.score)")
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .animation(Motion.state, value: competition.fitValue.score)
                 }
             }
             .width(min: 34, ideal: 44)

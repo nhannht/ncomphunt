@@ -25,6 +25,7 @@ struct CompetitionRow: View {
                         Text("new")
                             .font(.caption2)
                             .foregroundStyle(.tint)
+                            .transition(.scale.combined(with: .opacity))
                     }
                 }
                 HStack(spacing: 4) {
@@ -48,13 +49,19 @@ struct CompetitionRow: View {
             // edge, so the space between title and date reads as layout, not
             // as a void trailing every line.
             VStack(alignment: .trailing, spacing: 1) {
+                // A refresh that shifts "due in 3 days" to "due in 2 days"
+                // rolls the digits instead of blinking the whole phrase.
                 Text(competition.whenLine)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .contentTransition(.numericText())
+                    .animation(Motion.state, value: competition.whenLine)
                 if !competition.prize.isEmpty {
                     Text(competition.prize)
                         .foregroundStyle(.green)
                         .lineLimit(1)
+                        .contentTransition(.numericText())
+                        .animation(Motion.state, value: competition.prize)
                 }
             }
             .font(.caption2)
@@ -62,6 +69,7 @@ struct CompetitionRow: View {
         }
         .padding(.vertical, 1)
         .opacity(hasEnded ? 0.55 : 1)
+        .animation(Motion.layout, value: hasEnded)
     }
 }
 

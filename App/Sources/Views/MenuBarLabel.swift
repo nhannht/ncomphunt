@@ -12,7 +12,12 @@ struct MenuBarLabel: View {
             let text = status.code.isEmpty
                 ? status.countdown
                 : "\(status.code) \(status.countdown)"
+            // The minute tick rolls its digits instead of snapping. If the
+            // MenuBarExtra bridge ever flattens this to a plain swap it is a
+            // harmless no-op, not a bug.
             Label(text, systemImage: "trophy")
+                .contentTransition(.numericText())
+                .animation(Motion.state, value: text)
         } else {
             Image(systemName: "trophy")
         }

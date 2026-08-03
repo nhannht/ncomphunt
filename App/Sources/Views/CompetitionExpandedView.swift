@@ -150,6 +150,8 @@ struct CompetitionExpandedView: View {
                 .gridColumnAlignment(.trailing)
             Text(value)
                 .textSelection(.enabled)
+                .contentTransition(.numericText())
+                .animation(Motion.state, value: value)
         }
         .font(.footnote)
     }
