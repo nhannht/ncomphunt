@@ -73,7 +73,9 @@ map in the same turn.
 - `Sources/CompHuntKit/Sources/` - one file per source implementing
   `CompetitionSource` (`fetch() async throws -> [CompetitionDTO]`): CTFtime,
   Devpost, clist.by, Codeforces (keyless public `contest.list` API, upcoming
-  rounds only; guarantees the CP category is never empty out of the box),
+  rounds only; guarantees the CP category is never empty out of the box;
+  `CodeforcesRating` rides the same keyless API's `user.info` to cache the
+  profile's rating on the refresh cycle - COMP-17, failure is non-fatal),
   MLContests (keyless; `data-competitions` embedded JSON on mlcontests.com, the
   "CTFtime of AI" - keyless Kaggle/Zindi/Codabench/HuggingFace/DrivenData/AIcrowd
   coverage, `category: .ai`, open comps only), ybox.vn (embedded
