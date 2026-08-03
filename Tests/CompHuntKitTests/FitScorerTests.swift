@@ -253,9 +253,11 @@ private func score(
     }
 }
 
-@Suite struct FitContextTests {
+/// Serialized: both tests mutate the process-wide context slots, and a
+/// parallel interleaving would let one test's adoption leak into the other's
+/// reads.
+@Suite(.serialized) struct FitContextTests {
     /// The read-path conveniences score against whatever the app adopted.
-    /// Serialized into one test because the context is process-wide.
     @Test func adoptedProfileDrivesTheConveniences() {
         let row = comp("Context CTF", tags: [.ctf])
         FitContext.adopt(ProfileSnapshot(interests: [.ctf: 1.0]))
@@ -263,5 +265,21 @@ private func score(
         #expect(row.fitScoreForSort == 65)
         FitContext.adopt(.defaults)
         #expect(row.fitValue.score == 50)
+    }
+
+    /// Busy windows flow through their own slot into the same conveniences,
+    /// so the sort comparator sees calendar conflicts too. One test for the
+    /// same process-wide reason as above.
+    @Test func adoptedBusyIntervalsReachTheConveniences() {
+        let start = Date.now.addingTimeInterval(86_400)
+        let row = comp("Busy Weekend CTF", tags: [.ctf],
+                       start: start, end: start.addingTimeInterval(6 * 3600))
+        let free = row.fitValue.score
+        FitContext.adoptBusy([DateInterval(start: start, duration: 3600)])
+        let conflicted = row.fitValue
+        #expect(free - conflicted.score == 12)
+        #expect(conflicted.reasons.contains("conflicts with your calendar"))
+        FitContext.adoptBusy([])
+        #expect(row.fitValue.score == free)
     }
 }

@@ -27,7 +27,8 @@ public struct RankedCompetition: Sendable, Equatable {
 ///
 /// Calendar conflicts arrive as plain `[DateInterval]` computed in the app
 /// layer (COMP-18), so EventKit never leaks in here and the scorer stays
-/// testable; until that lands the app passes none and the component skips.
+/// testable; without calendar access the app adopts none and the component
+/// skips - neutral, never an error.
 public enum FitScorer {
     public static func rank(
         _ competition: Competition,
@@ -200,7 +201,9 @@ public enum FitScorer {
         return (4, "deadline in \(compactCountdown(to: next, now: now))")
     }
 
-    /// 9. Calendar conflict, once COMP-18 supplies the busy intervals.
+    /// 9. Calendar conflict against the busy windows the app layer read
+    /// from EventKit (COMP-18). A conflict costs points and says so; it
+    /// never hides a row.
     private static func calendarConflict(
         _ competition: Competition, _ busy: [DateInterval]
     ) -> (Int, String)? {
@@ -257,6 +260,12 @@ public enum FitScorer {
 /// function of (row, adopted snapshot).
 public enum FitContext {
     private static let slot = Mutex<ProfileSnapshot>(.defaults)
+    /// Busy windows read from the user's calendar (COMP-18). A second slot,
+    /// not a ProfileSnapshot field: the profile is durable user input, the
+    /// busy list is a volatile reading of the calendar, and they change on
+    /// different clocks. Empty means no access or a free calendar - both
+    /// score identically, which is the graceful-degradation rule.
+    private static let busySlot = Mutex<[DateInterval]>([])
 
     public static func adopt(_ profile: ProfileSnapshot) {
         slot.withLock { $0 = profile }
@@ -264,6 +273,14 @@ public enum FitContext {
 
     public static var current: ProfileSnapshot {
         slot.withLock { $0 }
+    }
+
+    public static func adoptBusy(_ intervals: [DateInterval]) {
+        busySlot.withLock { $0 = intervals }
+    }
+
+    public static var currentBusy: [DateInterval] {
+        busySlot.withLock { $0 }
     }
 }
 
@@ -273,7 +290,8 @@ extension Competition {
     /// the rest is arithmetic, so a second cache would only add a staleness
     /// channel for refresh-updated rows.
     public var fitValue: RankedCompetition {
-        FitScorer.rank(self, profile: FitContext.current)
+        FitScorer.rank(self, profile: FitContext.current,
+                       busy: FitContext.currentBusy)
     }
 
     /// Comparator target for the Best fit sort and the table's Fit column.
