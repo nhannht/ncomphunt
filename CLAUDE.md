@@ -362,6 +362,26 @@ soonest contest. Views live in `ContestAccessoryViews.swift`, whole file
   (`App/Widget/CountdownText.swift`); accessoryInline concatenates its bare
   `.text` because inline renders exactly one line of text.
 
+## Motion (one vocabulary, COMP-46)
+
+`App/Sources/Views/Motion.swift` is CategoryStyle for animation: three named
+curves (`state` for flips and digit rolls, `layout` for size/order changes,
+`emphasis` for the rare celebration) plus `Motion.reveal(reduced:)` for
+conditional content. Rules that are easy to violate later:
+
+- **Never a literal spring in a view.** Pick a tier from `Motion`; if none
+  fits, grow the vocabulary there, not at the use site.
+- **Movement needs a Reduce Motion fallback.** Any transition that slides,
+  scales, or grows pairs with `accessibilityReduceMotion` at the use site
+  (`Motion.reveal(reduced:)` encodes it; the dashboard bars skip their grow).
+  Digit rolls and cross-fades are exempt.
+- **A number that can change rolls.** `contentTransition(.numericText())` on
+  every changing figure - whenLine, prize, fit, tiles, menu-bar tick. A
+  static-looking number is a bug in a countdown app.
+- **The control is its own progress indicator.** Ask shimmers
+  (`variableColor`) and Refresh rotates in place while busy; never swap a
+  button out for a `ProgressView`.
+
 ## App Intents: Siri, Spotlight, Shortcuts (COMP-24)
 
 `App/Sources/Intents/` exposes the index to the system - and on macOS 26 to
