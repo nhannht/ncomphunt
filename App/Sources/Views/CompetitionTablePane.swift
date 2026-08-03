@@ -67,6 +67,16 @@ struct CompetitionTablePane: View {
                 }
             }
             .width(min: 70, ideal: 110)
+            TableColumn("Fit", sortUsing: Self.comparator(for: .fit)) { competition in
+                cell(competition) {
+                    // The number alone; the headline and reasons live in the
+                    // inspector, where there is room to say why.
+                    Text("\(competition.fitValue.score)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            .width(min: 34, ideal: 44)
             TableColumn("Source", sortUsing: Self.comparator(for: .source)) { competition in
                 cell(competition) {
                     Text(SourceID(rawValue: competition.source)?.displayName
@@ -132,6 +142,7 @@ struct CompetitionTablePane: View {
         case .deadline: KeyPathComparator(\.deadlineForSort, order: .forward)
         case .newest: KeyPathComparator(\.firstSeen, order: .reverse)
         case .prize: KeyPathComparator(\.prizeUSDForSort, order: .reverse)
+        case .fit: KeyPathComparator(\.fitScoreForSort, order: .reverse)
         case .title: KeyPathComparator(\.title, order: .forward)
         case .source: KeyPathComparator(\.source, order: .forward)
         }
@@ -141,6 +152,7 @@ struct CompetitionTablePane: View {
         if keyPath == \Competition.deadlineForSort { return .deadline }
         if keyPath == \Competition.firstSeen { return .newest }
         if keyPath == \Competition.prizeUSDForSort { return .prize }
+        if keyPath == \Competition.fitScoreForSort { return .fit }
         if keyPath == \Competition.title { return .title }
         if keyPath == \Competition.source { return .source }
         return nil

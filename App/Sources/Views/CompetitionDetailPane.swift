@@ -31,7 +31,8 @@ struct CompetitionDetailPane: View {
     }
 
     private func detail(_ competition: Competition) -> some View {
-        ScrollView {
+        let fit = competition.fitValue
+        return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(alignment: .firstTextBaseline) {
@@ -115,7 +116,21 @@ struct CompetitionDetailPane: View {
                         detailRow("Value", competition.prizeValue.confidence == .inferred
                             ? "\(summary) (from title)" : summary)
                     }
+                    detailRow("Fit", "\(fit.score) · \(fit.headline)")
                     detailRow("First seen", competition.firstSeen.formatted(date: .abbreviated, time: .shortened))
+                }
+
+                // The reasons are the product: "87" alone is not
+                // trustworthy, so every component that moved the score
+                // says what it saw.
+                if !fit.reasons.isEmpty {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(fit.reasons, id: \.self) { reason in
+                            Text(reason)
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
 
                 if !competition.details.isEmpty {

@@ -34,13 +34,22 @@ struct CompetitionListPane: View {
 
     @Environment(AppModel.self) private var model
     @Query private var competitions: [Competition]
+    /// The single profile row, observed so a Settings edit re-ranks the
+    /// list without a relaunch - the COMP-16 acceptance criterion.
+    @Query private var profiles: [UserProfile]
 
     /// Matching rows: best text match first, finished competitions always last.
     /// The rule and the ordering live in the kit so both can be tested without
     /// a window; the subtitle reports when relevance is in charge and when
     /// nothing matched, so neither is ever silent.
     private var found: SearchResults {
-        query.results(from: competitions, tieBreak: sort.areInOrder)
+        // Adopt the profile BEFORE sorting, in the same pass: an edit
+        // changes the row, the @Query re-evaluates this body, and the fresh
+        // snapshot is in place before any comparator or detail row reads
+        // `fitValue`. An onChange would adopt only after a render had
+        // already scored against the stale profile.
+        FitContext.adopt(profiles.first?.snapshot() ?? .defaults)
+        return query.results(from: competitions, tieBreak: sort.areInOrder)
     }
 
     private var isRanked: Bool { !query.terms.isEmpty }

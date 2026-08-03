@@ -66,6 +66,7 @@ enum ListSort: String, CaseIterable, Identifiable {
     case deadline
     case newest
     case prize
+    case fit
     case title
     case source
 
@@ -76,6 +77,7 @@ enum ListSort: String, CaseIterable, Identifiable {
         case .deadline: "Next deadline"
         case .newest: "Newest found"
         case .prize: "Prize value"
+        case .fit: "Best fit"
         case .title: "Title"
         case .source: "Source"
         }
@@ -94,6 +96,13 @@ enum ListSort: String, CaseIterable, Identifiable {
             // -infinity and sink below every priced one.
             if a.prizeUSDForSort != b.prizeUSDForSort {
                 return a.prizeUSDForSort > b.prizeUSDForSort
+            }
+            return a.title < b.title
+        case .fit:
+            // Best fit first, against whatever profile FitContext holds -
+            // the pane adopts a fresh snapshot before every sort pass.
+            if a.fitScoreForSort != b.fitScoreForSort {
+                return a.fitScoreForSort > b.fitScoreForSort
             }
             return a.title < b.title
         case .title:

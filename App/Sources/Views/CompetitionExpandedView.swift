@@ -19,7 +19,8 @@ struct CompetitionExpandedView: View {
     private var readingLanguage = TranslationPreferences.defaultLanguage
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let fit = competition.fitValue
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 // Every tag, not just the leading one - same as the desktop
                 // detail pane.
@@ -94,7 +95,20 @@ struct CompetitionExpandedView: View {
                     detailRow("Value", competition.prizeValue.confidence == .inferred
                         ? "\(summary) (from title)" : summary)
                 }
+                detailRow("Fit", "\(fit.score) · \(fit.headline)")
                 detailRow("First seen", competition.firstSeen.formatted(date: .abbreviated, time: .shortened))
+            }
+
+            // Same rule as the desktop pane: the score never travels
+            // without its reasons.
+            if !fit.reasons.isEmpty {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(fit.reasons, id: \.self) { reason in
+                        Text(reason)
+                    }
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
             }
 
             if let url = URL(string: competition.url) {
