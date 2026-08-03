@@ -137,8 +137,17 @@ map in the same turn.
   no model, per COMP-5. `FitContext` holds the adopted `ProfileSnapshot` -
   process-wide because sort comparators only see the Competition, same
   shape as PrizeNormalizer's cache; the app re-adopts on profile edits so
-  the list re-ranks live. Busy `[DateInterval]`s are a parameter awaiting
-  COMP-18; the app passes none today and the component skips)
+  the list re-ranks live. Busy `[DateInterval]`s ride a second FitContext
+  slot (COMP-18), read from EventKit by the app layer -
+  `CalendarSyncService.busyIntervals` is prompt-free, full-access-only, and
+  excludes the app's own nCompHunt calendar plus all-day/free events, so no
+  access degrades to neutral and a synced competition never conflicts with
+  itself. `FitScorer.topPick` (COMP-19) ranks the `upcomingContests`
+  candidate set and returns the best-fit row with its verdict - ties break
+  to the sooner date - for the menu-bar countdown and the widget's featured
+  row; `WidgetSnapshot.topPick` carries it across the App Group boundary as
+  plain values, optional end to end so a stale or older-build snapshot
+  still decodes)
 - `Sources/CompHuntKit/YouTrack/` - sink filing COMP issues (a small menu item
   in the app, not a headline button)
 - `Sources/CompHuntKit/Query/` - `SearchQuery` (operators `category:`, `region:`,

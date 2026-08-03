@@ -253,6 +253,61 @@ private func score(
     }
 }
 
+/// The COMP-19 selection: rank the same candidate set the soonest-first
+/// surfaces use, and let the highest score - not the nearest date - win.
+@Suite struct FitScorerTopPickTests {
+    @Test func theBestFitBeatsTheSoonest() {
+        let rows = [
+            comp("Soonest CTF", tags: [.ctf],
+                 deadline: now.addingTimeInterval(4 * 86_400)),
+            comp("Loved AI", tags: [.ai],
+                 deadline: now.addingTimeInterval(5 * 86_400)),
+        ]
+        let pick = FitScorer.topPick(
+            in: rows,
+            profile: profile(interests: [.ai: 1.0], weeklyHours: 100),
+            now: now)
+        #expect(pick?.competition.title == "Loved AI")
+        #expect(pick?.fit.reasons.first == "AI matches your interests")
+    }
+
+    @Test func equalScoresGoToTheSoonerDate() {
+        let rows = [
+            comp("Later Twin", deadline: now.addingTimeInterval(2 * 86_400)),
+            comp("Sooner Twin", deadline: now.addingTimeInterval(86_400)),
+        ]
+        let pick = FitScorer.topPick(in: rows, profile: profile(), now: now)
+        #expect(pick?.competition.title == "Sooner Twin")
+    }
+
+    /// The pick respects the same category/region lens as the menu bar, so
+    /// a filtered window and its countdown can never disagree.
+    @Test func filtersScopeTheCandidates() {
+        let rows = [
+            comp("CTF Row", tags: [.ctf],
+                 deadline: now.addingTimeInterval(86_400)),
+            comp("Loved AI", tags: [.ai],
+                 deadline: now.addingTimeInterval(2 * 86_400)),
+        ]
+        let pick = FitScorer.topPick(
+            in: rows, category: .ctf,
+            profile: profile(interests: [.ai: 1.0]), now: now)
+        #expect(pick?.competition.title == "CTF Row")
+    }
+
+    /// Ended, ongoing, and dateless rows are not candidates - there is
+    /// nothing to count down to - so an empty horizon yields no pick.
+    @Test func nothingUpcomingMeansNoPick() {
+        #expect(FitScorer.topPick(in: [], profile: profile(), now: now) == nil)
+        let gone = [
+            comp("Ended", start: now.addingTimeInterval(-2 * 86_400),
+                 end: now.addingTimeInterval(-86_400)),
+            comp("Dateless"),
+        ]
+        #expect(FitScorer.topPick(in: gone, profile: profile(), now: now) == nil)
+    }
+}
+
 /// Serialized: both tests mutate the process-wide context slots, and a
 /// parallel interleaving would let one test's adoption leak into the other's
 /// reads.

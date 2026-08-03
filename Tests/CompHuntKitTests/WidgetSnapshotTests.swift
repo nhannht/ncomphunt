@@ -76,7 +76,7 @@ private func comp(
         let items = [
             comp("Some CTF", category: .ctf, deadline: deadline, url: "https://ex.com/ctf"),
         ]
-        let snapshot = widgetSnapshot(from: items, now: now)
+        let snapshot = widgetSnapshot(from: items, profile: .defaults, now: now)
         let first = try! #require(snapshot.contests.first)
         #expect(first.title == "Some CTF")
         #expect(first.categoryCode == "CTF")
@@ -90,21 +90,62 @@ private func comp(
         let items = (0..<10).map { index in
             comp("c\(index)", category: .ai, start: now.addingTimeInterval(Double(index + 1) * 3_600))
         }
-        #expect(widgetSnapshot(from: items, limit: 6, now: now).contests.count == 6)
+        #expect(widgetSnapshot(from: items, limit: 6, profile: .defaults,
+                               now: now).contests.count == 6)
     }
 
     @Test func emptyWhenNothingUpcoming() {
         let items = [comp("past", start: now.addingTimeInterval(-3_600))]
-        #expect(widgetSnapshot(from: items, now: now).contests.isEmpty)
+        let snapshot = widgetSnapshot(from: items, profile: .defaults, now: now)
+        #expect(snapshot.contests.isEmpty)
+        #expect(snapshot.topPick == nil)
+    }
+
+    /// The featured row is the best FIT, while the list beside it stays
+    /// soonest-first - the two orders serve different questions.
+    @Test func topPickIsTheBestFitNotTheSoonest() {
+        let items = [
+            comp("Soonest CTF", category: .ctf,
+                 deadline: now.addingTimeInterval(4 * 86_400)),
+            comp("Loved AI", category: .ai,
+                 deadline: now.addingTimeInterval(5 * 86_400)),
+        ]
+        let snapshot = widgetSnapshot(
+            from: items,
+            profile: ProfileSnapshot(interests: [.ai: 1.0], weeklyHours: 100),
+            now: now)
+        #expect(snapshot.contests.map(\.title) == ["Soonest CTF", "Loved AI"])
+        let pick = try! #require(snapshot.topPick)
+        #expect(pick.contest.title == "Loved AI")
+        #expect(pick.contest.key == items[1].key)
+        #expect(pick.score > 50)
+        #expect(pick.reason == "AI matches your interests")
     }
 
     @Test func codableRoundTrips() throws {
-        let snapshot = WidgetSnapshot(generatedAt: now, contests: [
-            WidgetContest(key: "k1", title: "T1", categoryCode: "CP", url: "https://x/1", date: now),
-            WidgetContest(key: "k2", title: "T2", categoryCode: "AI", url: "https://x/2", date: nil),
-        ])
+        let snapshot = WidgetSnapshot(
+            generatedAt: now,
+            contests: [
+                WidgetContest(key: "k1", title: "T1", categoryCode: "CP", url: "https://x/1", date: now),
+                WidgetContest(key: "k2", title: "T2", categoryCode: "AI", url: "https://x/2", date: nil),
+            ],
+            topPick: WidgetTopPick(
+                contest: WidgetContest(key: "k2", title: "T2", categoryCode: "AI",
+                                       url: "https://x/2", date: nil),
+                score: 71, headline: "Good fit", reason: "AI matches your interests"))
         let data = try JSONEncoder().encode(snapshot)
         let decoded = try JSONDecoder().decode(WidgetSnapshot.self, from: data)
         #expect(decoded == snapshot)
+    }
+
+    /// The exact bytes an older build wrote: no `topPick` key, no `date` key.
+    /// A downgrade or a stale snapshot must decode, never break the widget.
+    @Test func aSnapshotWrittenByAnOlderBuildStillDecodes() throws {
+        let legacy = #"{"generatedAt":21692800,"contests":[{"key":"k","title":"T","categoryCode":"CP","url":"https://x"}]}"#
+        let decoded = try JSONDecoder().decode(
+            WidgetSnapshot.self, from: Data(legacy.utf8))
+        #expect(decoded.topPick == nil)
+        #expect(decoded.contests.map(\.title) == ["T"])
+        #expect(decoded.contests.first?.date == nil)
     }
 }

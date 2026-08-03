@@ -22,38 +22,84 @@ public struct WidgetContest: Codable, Sendable, Equatable, Identifiable {
     }
 }
 
+/// The featured row: the best-fit competition, resolved by the APP before the
+/// snapshot crosses the App Group boundary (COMP-19). Plain values only - the
+/// widget never runs the scorer or opens the store; the score, headline, and
+/// strongest reason travel pre-computed.
+public struct WidgetTopPick: Codable, Sendable, Equatable {
+    public let contest: WidgetContest
+    /// The 0-100 fit score at write time.
+    public let score: Int
+    /// The verdict band phrase: "Strong fit", "Good fit", ...
+    public let headline: String
+    /// The strongest reason behind the score, nil when nothing moved it.
+    public let reason: String?
+
+    public init(contest: WidgetContest, score: Int, headline: String, reason: String?) {
+        self.contest = contest
+        self.score = score
+        self.headline = headline
+        self.reason = reason
+    }
+}
+
 /// The snapshot the widget renders. `generatedAt` lets the widget show staleness
-/// if the app has not refreshed in a while.
+/// if the app has not refreshed in a while. `topPick` is optional end to end:
+/// a snapshot written by an older build has no such key, decodes to nil, and
+/// the widget falls back to the soonest-first list - a stale file can never
+/// break rendering.
 public struct WidgetSnapshot: Codable, Sendable, Equatable {
     public let generatedAt: Date
     public let contests: [WidgetContest]
+    public let topPick: WidgetTopPick?
 
-    public init(generatedAt: Date, contests: [WidgetContest]) {
+    public init(generatedAt: Date, contests: [WidgetContest],
+                topPick: WidgetTopPick? = nil) {
         self.generatedAt = generatedAt
         self.contests = contests
+        self.topPick = topPick
     }
 }
 
 /// Build the snapshot from the live store: the next `limit` upcoming contests
 /// across all verticals (unfiltered - the widget is a standalone glance, not the
 /// filtered list window). Reuses `upcomingContests` and `shortCode` so the widget
-/// and the app agree on selection and badges.
+/// and the app agree on selection and badges. The top pick is ranked here, in
+/// the app process, against the profile and busy windows it passes in - the
+/// widget only ever decodes the result.
 public func widgetSnapshot(
     from competitions: [Competition],
     limit: Int = 6,
+    profile: ProfileSnapshot,
+    busy: [DateInterval] = [],
     now: Date = .now
 ) -> WidgetSnapshot {
     let upcoming = upcomingContests(
         in: competitions, category: nil, region: nil, limit: limit, now: now)
-    let contests = upcoming.map { competition in
-        WidgetContest(
+    let contests = upcoming.map(WidgetContest.init)
+    let pick = FitScorer.topPick(
+        in: competitions, profile: profile, busy: busy, now: now
+    ).map { pick in
+        WidgetTopPick(
+            contest: WidgetContest(pick.competition),
+            score: pick.fit.score,
+            headline: pick.fit.headline,
+            reason: pick.fit.reasons.first)
+    }
+    return WidgetSnapshot(generatedAt: now, contests: contests, topPick: pick)
+}
+
+extension WidgetContest {
+    /// The portable projection of a live row, shared by the list and the
+    /// top pick so the two can never disagree on a field.
+    init(_ competition: Competition) {
+        self.init(
             key: competition.key,
             title: competition.title,
             categoryCode: competition.category.shortCode,
             url: competition.url,
             date: competition.nextRelevantDate)
     }
-    return WidgetSnapshot(generatedAt: now, contests: contests)
 }
 
 /// Encode the snapshot to the App Group container (atomic). No-op if the

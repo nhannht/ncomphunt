@@ -248,6 +248,37 @@ public enum FitScorer {
         default: 4
         }
     }
+
+    // MARK: The top pick (COMP-19)
+
+    /// The best-fit upcoming competition and its verdict: what the menu bar
+    /// counts down to and the widget features. Candidates are exactly the
+    /// `upcomingContests` set the soonest-first surfaces already use, so the
+    /// pick can never be an ended, ongoing, or dateless row; among them the
+    /// highest score wins, ties break to the sooner date and then the title,
+    /// keeping the choice deterministic. Pure - profile and busy are
+    /// parameters, so tests need no process-wide context.
+    public static func topPick(
+        in competitions: [Competition],
+        category: CompetitionCategory? = nil,
+        region: Region? = nil,
+        profile: ProfileSnapshot,
+        busy: [DateInterval] = [],
+        now: Date = .now
+    ) -> (competition: Competition, fit: RankedCompetition)? {
+        upcomingContests(in: competitions, category: category,
+                         region: region, now: now)
+            .map { (competition: $0,
+                    fit: rank($0, profile: profile, busy: busy, now: now)) }
+            .sorted { a, b in
+                if a.fit.score != b.fit.score { return a.fit.score > b.fit.score }
+                let aDate = a.competition.nextRelevantDate ?? .distantFuture
+                let bDate = b.competition.nextRelevantDate ?? .distantFuture
+                if aDate != bDate { return aDate < bDate }
+                return a.competition.title < b.competition.title
+            }
+            .first
+    }
 }
 
 /// The profile the read-path conveniences score against.
