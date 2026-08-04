@@ -23,17 +23,33 @@ struct TranslationState {
     var showingTranslation = false
     var isRunning = false
 
-    mutating func reset() { self = TranslationState() }
+    /// Clears everything a new selection must not inherit - texts and flags -
+    /// while the session handle SURVIVES on purpose. `translationTask` re-runs
+    /// on a value change, and a fresh Configuration for the same language pair
+    /// compares equal to the old one (the reason `invalidate()` exists), so
+    /// nil-ing the configuration here sent `arm(for:)` down the create-fresh
+    /// branch on every selection change: the task fired for the first
+    /// Vietnamese row and never again. Do not "simplify" this back to
+    /// `self = TranslationState()`.
+    mutating func reset() {
+        translatedTitle = nil
+        translatedDetails = nil
+        showingTranslation = false
+        isRunning = false
+    }
 
     /// Kicks off (or retries) a translation toward `pair`. The actual work
     /// happens in `translationEffect` when the configuration change lands.
     mutating func arm(for pair: TranslationPair?) {
         guard let pair else { return }
-        if configuration == nil {
+        if configuration?.source == pair.source, configuration?.target == pair.target {
+            // Same pair as the live session: a new instance would compare
+            // equal and never re-trigger the task. invalidate() is the
+            // framework's re-run switch for exactly this case.
+            configuration?.invalidate()
+        } else {
             configuration = TranslationSession.Configuration(
                 source: pair.source, target: pair.target)
-        } else {
-            configuration?.invalidate()
         }
     }
 
@@ -113,6 +129,16 @@ struct TranslateButton: View {
 }
 
 extension View {
+    /// Renders the swap between original and translated text as a transform:
+    /// keying identity on the flip makes SwiftUI treat the two strings as two
+    /// views, so the standard reveal (blur-replace; cross-fade under Reduce
+    /// Motion) morphs one into the other instead of hard-cutting in place.
+    /// The surface's `.animation(Motion.state, value: showingTranslation)`
+    /// drives it.
+    func translationMorph(showing: Bool, reduced: Bool) -> some View {
+        id(showing).transition(Motion.reveal(reduced: reduced))
+    }
+
     /// Hosts the translation work for a surface that renders `state`. Attach
     /// once per surface; the task only runs once something arms the
     /// configuration, and a failure quietly leaves the original on screen.

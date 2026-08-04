@@ -42,7 +42,8 @@ struct CompetitionDetailPane: View {
                         Text(translation.title(original: competition.title))
                             .font(.title2.bold())
                             .textSelection(.enabled)
-                            .contentTransition(.opacity)
+                            .translationMorph(showing: translation.showingTranslation,
+                                              reduced: reduceMotion)
                         Spacer()
                         // Out of the actions menu and onto the surface: marking
                         // is the thing people came here to do, and two clicks
@@ -143,6 +144,8 @@ struct CompetitionDetailPane: View {
                     Text(translation.details(original: competition.details))
                         .font(.body)
                         .textSelection(.enabled)
+                        .translationMorph(showing: translation.showingTranslation,
+                                          reduced: reduceMotion)
                 }
             }
             .padding(20)

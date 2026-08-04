@@ -127,6 +127,8 @@ struct CompetitionExpandedView: View {
                 Text(translation.details(original: competition.details))
                     .font(.footnote)
                     .textSelection(.enabled)
+                    .translationMorph(showing: translation.showingTranslation,
+                                      reduced: reduceMotion)
             }
         }
         .padding(.leading, 14)
