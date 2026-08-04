@@ -96,6 +96,18 @@ enum Notifier {
         await pendingCount(prefix: DigestPlan.identifierPrefix)
     }
 
+    /// When the next pending digest will fire, straight from the notification
+    /// centre - the Settings row's proof that a morning post is actually
+    /// queued, not just that the toggle is on.
+    static func nextDigestDate() async -> Date? {
+        await UNUserNotificationCenter.current().pendingNotificationRequests()
+            .filter { $0.identifier.hasPrefix(DigestPlan.identifierPrefix) }
+            .compactMap {
+                ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate()
+            }
+            .min()
+    }
+
     /// Replace everything under one prefix, leaving the other prefix untouched.
     ///
     /// A full replace rather than a diff: the caller only reaches here when the

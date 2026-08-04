@@ -535,6 +535,10 @@ private struct NotificationsSettings: View {
                     get: { model.digestTime },
                     set: { model.setDigestTime($0) }),
                     displayedComponents: .hourAndMinute)
+                // Proof a post is actually queued, read back from the
+                // notification centre - not what the toggle wishes. The
+                // difference is what makes "it never arrived" diagnosable.
+                LabeledContent("Next digest", value: nextDigestText)
             }
 
             Toggle(isOn: Binding(
@@ -567,6 +571,17 @@ private struct NotificationsSettings: View {
             permission = await Notifier.permissionStatus()
             model.loadReminderStatus()
         }
+    }
+
+    /// Read back from the notification centre, so this proves a request
+    /// exists rather than restating the toggle. Empty is honest: a quiet
+    /// horizon queues nothing.
+    private var nextDigestText: String {
+        guard let next = model.nextDigestDate else { return "Nothing queued" }
+        let when = next.formatted(date: .abbreviated, time: .shortened)
+        return model.scheduledDigestCount > 1
+            ? "\(when) \u{00B7} \(model.scheduledDigestCount) queued"
+            : when
     }
 }
 

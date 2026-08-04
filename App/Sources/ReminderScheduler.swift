@@ -37,6 +37,9 @@ final class ReminderScheduler {
     /// How many of each are pending, for the Settings rows.
     private(set) var scheduledCount = 0
     private(set) var scheduledDigestCount = 0
+    /// When the next digest fires, for the same rows - nil when the horizon
+    /// is quiet or digests are off.
+    private(set) var nextDigestDate: Date?
 
     // MARK: preferences
 
@@ -106,6 +109,7 @@ final class ReminderScheduler {
         guard signature != lastDigests else { return }
         lastDigests = signature
         scheduledDigestCount = plans.count
+        nextDigestDate = plans.map(\.fireDate).min()
         await Notifier.replaceDigests(with: plans)
     }
 
@@ -153,6 +157,7 @@ final class ReminderScheduler {
         await Notifier.cancelAllDigests()
         lastDigests = []
         scheduledDigestCount = 0
+        nextDigestDate = nil
     }
 
     /// Read the true pending counts back from the notification centre, for the
@@ -160,5 +165,6 @@ final class ReminderScheduler {
     func refreshScheduledCount() async {
         scheduledCount = await Notifier.pendingReminderCount()
         scheduledDigestCount = await Notifier.pendingDigestCount()
+        nextDigestDate = await Notifier.nextDigestDate()
     }
 }

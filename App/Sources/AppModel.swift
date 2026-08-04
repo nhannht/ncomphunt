@@ -44,6 +44,8 @@ final class AppModel {
     private(set) var scheduledReminderCount: Int = 0
     private(set) var digestEnabled: Bool = ReminderScheduler.shared.isDigestEnabled
     private(set) var digestTime: Date = ReminderScheduler.shared.digestTime
+    private(set) var scheduledDigestCount: Int = 0
+    private(set) var nextDigestDate: Date?
 
     private var autoRefreshTask: Task<Void, Never>?
     private var countdownTask: Task<Void, Never>?
@@ -452,5 +454,7 @@ extension AppModel {
         scheduledReminderCount = ReminderScheduler.shared.scheduledCount
         digestEnabled = ReminderScheduler.shared.isDigestEnabled
         digestTime = ReminderScheduler.shared.digestTime
+        scheduledDigestCount = ReminderScheduler.shared.scheduledDigestCount
+        nextDigestDate = ReminderScheduler.shared.nextDigestDate
     }
 }
