@@ -33,176 +33,148 @@ import Testing
                            now: firstSeen ?? date(2020, 1, 1))
     }
 
-    // MARK: when it fires
+    // MARK: counts are relative to the moment it is built for
 
-    @Test func schedulesTheNextMorningsAtTheChosenHour() {
-        let now = date(2026, 8, 2, 14, 30)
-        let plans = DigestPlan.plans(
-            for: [competition(registrationDeadline: date(2026, 8, 6))],
-            hour: 8, calendar: calendar, now: now)
-        #expect(plans.map(\.fireDate) == [date(2026, 8, 3, 8), date(2026, 8, 4, 8)])
-    }
-
-    /// Turning the digest on at 09:00 must not fire one for a morning that has
-    /// already gone by.
-    @Test func skipsAMorningThatHasAlreadyPassedToday() {
-        let now = date(2026, 8, 2, 9, 0)
-        let plans = DigestPlan.plans(
-            for: [competition(registrationDeadline: date(2026, 8, 6))],
-            hour: 8, calendar: calendar, now: now)
-        #expect(plans.first?.fireDate == date(2026, 8, 3, 8))
-        #expect(plans.allSatisfy { $0.fireDate > now })
-    }
-
-    @Test func honoursACustomHour() {
-        let now = date(2026, 8, 2, 4, 0)
-        let plans = DigestPlan.plans(
-            for: [competition(registrationDeadline: date(2026, 8, 5))],
-            hour: 6, minute: 30, daysAhead: 1, calendar: calendar, now: now)
-        #expect(plans.map(\.fireDate) == [date(2026, 8, 2, 6, 30)])
-    }
-
-    // MARK: counts are relative to the morning, not to now
-
-    /// The whole reason the counts are computed per morning. A deadline 8 days
-    /// out is not "this week" today, but it is by tomorrow morning - and a
-    /// digest that says otherwise when it fires is simply wrong.
-    @Test func aDeadlineEntersTheWindowAsItsMorningApproaches() throws {
-        let now = date(2026, 8, 2, 12, 0)
-        // A long-running competition so BOTH mornings have something to say -
-        // otherwise the first is skipped entirely and there is nothing to
-        // compare against.
+    /// The whole reason the counts are computed per moment. A deadline 8 days
+    /// out is not "this week" today, but it is by tomorrow - and a digest that
+    /// says otherwise when it lands is simply wrong.
+    @Test func aDeadlineEntersTheWindowAsItsMomentApproaches() throws {
+        // A long-running competition so BOTH moments have something to say -
+        // otherwise the first yields no plan and there is nothing to compare.
         let running = competition(
             title: "Running", startDate: date(2026, 7, 1), endDate: date(2026, 9, 1))
-        let plans = DigestPlan.plans(
-            for: [running, competition(registrationDeadline: date(2026, 8, 10, 12))],
-            hour: 8, daysAhead: 2, calendar: calendar, now: now)
+        let rows = [running, competition(registrationDeadline: date(2026, 8, 10, 12))]
 
         // 3 Aug 08:00 + 7d = 10 Aug 08:00, which falls short of the deadline.
-        let first = try #require(plans.first { $0.fireDate == date(2026, 8, 3, 8) })
-        #expect(first.title == "Nothing closing this week")
+        let earlier = try #require(
+            DigestPlan.make(for: rows, at: date(2026, 8, 3, 8), calendar: calendar))
+        #expect(earlier.title == "Nothing closing this week")
         // 4 Aug 08:00 + 7d = 11 Aug 08:00, which now covers it.
-        let second = try #require(plans.first { $0.fireDate == date(2026, 8, 4, 8) })
-        #expect(second.title == "1 competition closing this week")
+        let later = try #require(
+            DigestPlan.make(for: rows, at: date(2026, 8, 4, 8), calendar: calendar))
+        #expect(later.title == "1 competition closing this week")
     }
 
-    /// A skipped morning collapses out of the list rather than appearing as an
-    /// empty plan, so what is scheduled is exactly what has something to say.
-    @Test func quietMorningsAreAbsentRatherThanEmpty() {
-        let now = date(2026, 8, 2, 12, 0)
-        // Between 3 Aug's horizon (10 Aug 08:00) and 4 Aug's (11 Aug 08:00), so
-        // only the second morning has anything to report.
-        let plans = DigestPlan.plans(
-            for: [competition(registrationDeadline: date(2026, 8, 10, 12))],
-            hour: 8, daysAhead: 2, calendar: calendar, now: now)
-        #expect(plans.map(\.fireDate) == [date(2026, 8, 4, 8)])
-    }
-
-    @Test func countsSeveralClosingCompetitions() {
-        let now = date(2026, 8, 2, 12, 0)
+    @Test func countsSeveralClosingCompetitions() throws {
         let rows = (1...3).map { index in
             competition(title: "Contest \(index)",
                         registrationDeadline: date(2026, 8, 5 + index))
         }
-        let plans = DigestPlan.plans(
-            for: rows, hour: 8, daysAhead: 1, calendar: calendar, now: now)
-        #expect(plans[0].title == "3 competitions closing this week")
+        let plan = try #require(
+            DigestPlan.make(for: rows, at: date(2026, 8, 2, 12), calendar: calendar))
+        #expect(plan.title == "3 competitions closing this week")
     }
 
-    @Test func countsWhatIsRunningAtThatMorning() {
-        let now = date(2026, 8, 2, 12, 0)
+    @Test func countsWhatIsRunningAtThatMoment() throws {
         let running = competition(
             title: "Running", startDate: date(2026, 8, 1), endDate: date(2026, 8, 20))
         let notYet = competition(
             title: "Later", startDate: date(2026, 8, 15), endDate: date(2026, 8, 25))
-        let plans = DigestPlan.plans(
-            for: [running, notYet], hour: 8, daysAhead: 1, calendar: calendar, now: now)
-        #expect(plans[0].body.contains("1 running now"))
+        let plan = try #require(DigestPlan.make(
+            for: [running, notYet], at: date(2026, 8, 2, 12), calendar: calendar))
+        #expect(plan.body.contains("1 running now"))
     }
 
-    @Test func countsWhatWasFoundInTheLastDay() {
-        let now = date(2026, 8, 2, 12, 0)
+    @Test func countsWhatWasFoundInTheLastDay() throws {
         let fresh = competition(title: "Fresh",
                                 registrationDeadline: date(2026, 8, 6),
                                 firstSeen: date(2026, 8, 2, 11))
         let old = competition(title: "Old",
                               registrationDeadline: date(2026, 8, 6),
                               firstSeen: date(2026, 7, 1))
-        let plans = DigestPlan.plans(
-            for: [fresh, old], hour: 8, daysAhead: 1, calendar: calendar, now: now)
-        #expect(plans[0].body.contains("1 new since yesterday"))
+        let plan = try #require(DigestPlan.make(
+            for: [fresh, old], at: date(2026, 8, 2, 12), calendar: calendar))
+        #expect(plan.body.contains("1 new since yesterday"))
     }
 
     /// Day one seeds the whole index at once. "282 new since yesterday" is true
     /// and useless, and it is exactly the noise the old per-refresh banner made.
-    @Test func aFreshInstallDoesNotReportTheWholeIndexAsNew() {
-        let now = date(2026, 8, 2, 12, 0)
+    @Test func aFreshInstallDoesNotReportTheWholeIndexAsNew() throws {
         let justInstalled = (1...5).map { index in
             competition(title: "Contest \(index)",
                         registrationDeadline: date(2026, 8, 6),
                         firstSeen: date(2026, 8, 2, 11))
         }
-        let plans = DigestPlan.plans(
-            for: justInstalled, hour: 8, daysAhead: 1, calendar: calendar, now: now)
-        #expect(!plans[0].body.contains("new"))
-        #expect(plans[0].title == "5 competitions closing this week")
+        let plan = try #require(DigestPlan.make(
+            for: justInstalled, at: date(2026, 8, 2, 12), calendar: calendar))
+        #expect(!plan.body.contains("new"))
+        #expect(plan.title == "5 competitions closing this week")
     }
 
     // MARK: silence
 
-    /// The point of the digest is not to interrupt. A morning with nothing to
+    /// The point of the digest is not to interrupt. A moment with nothing to
     /// report sends nothing, rather than "0 competitions this week".
-    @Test func aMorningWithNothingToReportSendsNothing() {
-        let now = date(2026, 8, 2, 12, 0)
-        #expect(DigestPlan.plans(for: [], hour: 8, calendar: calendar, now: now).isEmpty)
+    @Test func aMomentWithNothingToReportSendsNothing() {
+        #expect(DigestPlan.make(for: [], at: date(2026, 8, 2, 12),
+                                calendar: calendar) == nil)
     }
 
-    @Test func anEmptyClauseIsOmittedRatherThanShownAsZero() {
-        let now = date(2026, 8, 2, 12, 0)
-        let plans = DigestPlan.plans(
+    /// Between 2 Aug's horizon and the deadline, so this moment has nothing to
+    /// say at all - and says nothing, rather than an empty plan.
+    @Test func aQuietHorizonYieldsNoPlanRatherThanAnEmptyOne() {
+        #expect(DigestPlan.make(
+            for: [competition(registrationDeadline: date(2026, 8, 20))],
+            at: date(2026, 8, 2, 12), calendar: calendar) == nil)
+    }
+
+    @Test func anEmptyClauseIsOmittedRatherThanShownAsZero() throws {
+        let plan = try #require(DigestPlan.make(
             for: [competition(registrationDeadline: date(2026, 8, 6),
                               firstSeen: date(2026, 7, 1))],
-            hour: 8, daysAhead: 1, calendar: calendar, now: now)
-        #expect(plans[0].body == "")
-        #expect(!plans[0].body.contains("0"))
+            at: date(2026, 8, 2, 12), calendar: calendar))
+        #expect(plan.body == "")
+        #expect(!plan.body.contains("0"))
     }
 
     // MARK: identity
 
-    /// One digest per calendar day, so re-deriving on every refresh replaces
-    /// that morning's plan instead of stacking a second one on it.
-    @Test func oneStableIdentifierPerMorning() {
-        let now = date(2026, 8, 2, 12, 0)
+    /// One digest per calendar day. This is what lets the app tell "already sent
+    /// today" from "this is a new day" without keeping a second piece of state,
+    /// so two moments on the same day must agree.
+    @Test func oneStableIdentifierPerDay() throws {
         let rows = [competition(registrationDeadline: date(2026, 8, 6))]
-        let first = DigestPlan.plans(for: rows, hour: 8, calendar: calendar, now: now)
-        let second = DigestPlan.plans(
-            for: rows, hour: 8, calendar: calendar, now: now.addingTimeInterval(3600))
-        #expect(first.map(\.id) == second.map(\.id))
-        #expect(first[0].id == "digest.2026-08-03")
-        #expect(Set(first.map(\.id)).count == first.count)
+        let morning = try #require(
+            DigestPlan.make(for: rows, at: date(2026, 8, 2, 9), calendar: calendar))
+        let evening = try #require(
+            DigestPlan.make(for: rows, at: date(2026, 8, 2, 21), calendar: calendar))
+        #expect(morning.id == evening.id)
+        #expect(morning.id == "digest.2026-08-02")
+
+        let nextDay = try #require(
+            DigestPlan.make(for: rows, at: date(2026, 8, 3, 9), calendar: calendar))
+        #expect(nextDay.id == "digest.2026-08-03")
     }
 
     /// The applier clears digests by prefix, so they must not collide with the
     /// reminder namespace or one would wipe the other.
-    @Test func digestIdentifiersCannotBeMistakenForReminders() {
-        let now = date(2026, 8, 2, 12, 0)
-        let plans = DigestPlan.plans(
+    @Test func digestIdentifiersCannotBeMistakenForReminders() throws {
+        let plan = try #require(DigestPlan.make(
             for: [competition(registrationDeadline: date(2026, 8, 6))],
-            hour: 8, calendar: calendar, now: now)
-        #expect(plans.allSatisfy { $0.id.hasPrefix(DigestPlan.identifierPrefix) })
-        #expect(plans.allSatisfy { !$0.id.hasPrefix(ReminderPlan.identifierPrefix) })
+            at: date(2026, 8, 2, 12), calendar: calendar))
+        #expect(plan.id.hasPrefix(DigestPlan.identifierPrefix))
+        #expect(!plan.id.hasPrefix(ReminderPlan.identifierPrefix))
+    }
+
+    /// The moment it is built for is the moment it fires. macOS passes now and
+    /// posts; iOS passes the next learned morning and schedules there.
+    @Test func theFireDateIsTheMomentItWasBuiltFor() throws {
+        let moment = date(2026, 8, 6, 9, 15)
+        let plan = try #require(DigestPlan.make(
+            for: [competition(registrationDeadline: date(2026, 8, 8))],
+            at: moment, calendar: calendar))
+        #expect(plan.fireDate == moment)
     }
 
     /// A digest is about the whole list, so marking must not change it. The two
     /// notification paths are independent by design.
-    @Test func markingDoesNotChangeTheDigest() {
-        let now = date(2026, 8, 2, 12, 0)
+    @Test func markingDoesNotChangeTheDigest() throws {
         let row = competition(registrationDeadline: date(2026, 8, 6))
-        let before = DigestPlan.plans(
-            for: [row], hour: 8, daysAhead: 1, calendar: calendar, now: now)
+        let before = DigestPlan.make(for: [row], at: date(2026, 8, 2, 12),
+                                     calendar: calendar)
         row.status = .applied
-        let after = DigestPlan.plans(
-            for: [row], hour: 8, daysAhead: 1, calendar: calendar, now: now)
+        let after = DigestPlan.make(for: [row], at: date(2026, 8, 2, 12),
+                                    calendar: calendar)
         #expect(before == after)
     }
 }

@@ -1,20 +1,34 @@
 import Foundation
 
 /// The one notification the app sends about competitions you have NOT marked:
-/// a short morning summary of the whole list.
+/// a short summary of the whole list, delivered when you get back to the
+/// machine.
 ///
 /// A separate path from `ReminderPlan`, not a variant of it. A reminder is keyed
-/// to one competition's deadline; a digest is keyed to a wall-clock hour and has
-/// no competition at all. Squeezing the second through the first would mean a
-/// fake competition or a nil-everywhere field, so they only share the applier
-/// and their own identifier prefixes.
+/// to one competition's deadline; a digest has no competition at all. Squeezing
+/// the second through the first would mean a fake competition or a nil-everywhere
+/// field, so they only share the applier and their own identifier prefixes.
 ///
 /// ```
-///   every competition  ->  DigestPlan   ->  one post each morning
+///   every competition  ->  DigestPlan   ->  one post when you come back
 ///   marked only        ->  ReminderPlan ->  posts before a deadline
 /// ```
+///
+/// ## When it arrives
+///
+/// This type says WHAT to send and never WHEN. The moment comes from
+/// `ArrivalLog`, which watches for the user actually returning to the machine.
+/// It used to be a wall-clock hour with a Settings picker, and that was wrong
+/// twice over: the Mac is asleep at any hour you might name (measured
+/// 2026-08-05 - deep sleep 07:51 to 08:06 swallowed the 08:00 post), and asking
+/// someone to choose a time for a background app spends their attention on a
+/// decision the app can make by watching.
+///
+/// Content is therefore computed at the moment it is used. There is no
+/// scheduling-ahead and no stale-numbers hazard to reason about: a digest built
+/// for `moment` describes the list as of `moment`.
 public struct DigestPlan: Sendable, Equatable, Identifiable {
-    /// Stable per morning, so re-applying replaces rather than duplicates.
+    /// Stable per day, so re-deriving replaces rather than duplicates.
     public let id: String
     public let title: String
     public let body: String
@@ -31,124 +45,79 @@ public struct DigestPlan: Sendable, Equatable, Identifiable {
     /// touching the deadline reminders that live beside them.
     public static let identifierPrefix = "digest."
 
-    /// The default morning. Changeable in Settings, because "morning" is
-    /// personal and a digest that arrives after someone starts work is just a
-    /// notification.
-    public static let defaultHour = 8
-    public static let defaultMinute = 0
-
-    /// How far ahead to schedule.
-    ///
-    /// Two mornings, not thirty. Content is computed when the plan is built, so
-    /// a digest scheduled far out describes a list that has since changed. Two
-    /// covers a day the app never runs, and every refresh re-derives the pair.
-    /// If the app stays closed longer than that the digest goes quiet, which is
-    /// the honest failure - better than arriving with week-old numbers.
-    public static let defaultDaysAhead = 2
-
     /// How wide "this week" is.
     public static let horizonDays = 7
 
-    /// The digests that should be pending right now.
+    /// The digest for one moment, or nil when that moment has nothing to say.
     ///
-    /// Each morning's counts are computed relative to THAT morning, not to now,
-    /// so tomorrow's digest is accurate when it fires rather than describing
-    /// today. A morning with nothing to report yields no plan at all - the whole
-    /// point is not to interrupt, and "0 competitions this week" is an
-    /// interruption that carries no information.
-    public static func plans(
+    /// Every count is relative to `moment`, so the numbers are true when the
+    /// post lands. macOS passes `.now` and posts immediately; iOS passes the
+    /// next learned morning and schedules there. One constructor, two call
+    /// shapes - the platforms differ in when they can reach the user, not in
+    /// what the digest is.
+    ///
+    /// A moment with nothing to report yields no plan at all - the whole point
+    /// is not to interrupt, and "0 competitions this week" is an interruption
+    /// that carries no information.
+    public static func make(
         for competitions: [Competition],
-        hour: Int = defaultHour,
-        minute: Int = defaultMinute,
-        daysAhead: Int = defaultDaysAhead,
+        at moment: Date,
         horizonDays: Int = horizonDays,
-        calendar: Calendar = .current,
-        now: Date = .now
-    ) -> [DigestPlan] {
-        var plans: [DigestPlan] = []
-        for morning in mornings(hour: hour, minute: minute, count: daysAhead,
-                                calendar: calendar, now: now) {
-            let closing = closingCount(in: competitions, from: morning,
-                                       horizonDays: horizonDays)
-            let running = runningCount(in: competitions, at: morning)
-            // `new` is only meaningful for the first morning and only counts
-            // what is already known: anything discovered between now and then
-            // is not in the store yet. Every refresh rebuilds these plans, so
-            // by the time one fires it under-counts by at most one refresh.
-            let new = newCount(in: competitions, at: morning, calendar: calendar)
-
-            guard closing > 0 || running > 0 || new > 0 else { continue }
-            plans.append(DigestPlan(
-                id: identifier(for: morning, calendar: calendar),
-                title: title(closing: closing, horizonDays: horizonDays),
-                body: body(running: running, new: new),
-                fireDate: morning))
-        }
-        return plans
+        calendar: Calendar = .current
+    ) -> DigestPlan? {
+        let closing = closingCount(in: competitions, from: moment,
+                                   horizonDays: horizonDays)
+        let running = runningCount(in: competitions, at: moment)
+        let new = newCount(in: competitions, at: moment, calendar: calendar)
+        guard closing > 0 || running > 0 || new > 0 else { return nil }
+        return DigestPlan(
+            id: identifier(for: moment, calendar: calendar),
+            title: title(closing: closing, horizonDays: horizonDays),
+            body: body(running: running, new: new),
+            fireDate: moment)
     }
 
-    /// The next `count` occurrences of the given local time, strictly in the
-    /// future. Today's is skipped once it has passed, so enabling the digest at
-    /// 9am does not fire one immediately for a morning already gone.
-    static func mornings(
-        hour: Int, minute: Int, count: Int, calendar: Calendar, now: Date
-    ) -> [Date] {
-        var results: [Date] = []
-        var day = now
-        // One extra day of headroom: today's slot is usually already past.
-        for _ in 0...(count) {
-            guard let candidate = calendar.date(
-                bySettingHour: hour, minute: minute, second: 0, of: day)
-            else { break }
-            if candidate > now { results.append(candidate) }
-            guard let next = calendar.date(byAdding: .day, value: 1, to: day)
-            else { break }
-            day = next
-            if results.count == count { break }
-        }
-        return results
-    }
-
-    /// Competitions whose next date falls between this morning and the horizon.
+    /// Competitions whose next date falls between this moment and the horizon.
     static func closingCount(
-        in competitions: [Competition], from morning: Date, horizonDays: Int
+        in competitions: [Competition], from moment: Date, horizonDays: Int
     ) -> Int {
-        let limit = morning.addingTimeInterval(Double(horizonDays) * 86_400)
+        let limit = moment.addingTimeInterval(Double(horizonDays) * 86_400)
         return competitions.count { competition in
             guard let next = competition.nextRelevantDate else { return false }
-            return next >= morning && next <= limit
+            return next >= moment && next <= limit
         }
     }
 
-    /// Already started and not yet over, as of that morning.
-    static func runningCount(in competitions: [Competition], at morning: Date) -> Int {
+    /// Already started and not yet over, as of that moment.
+    static func runningCount(in competitions: [Competition], at moment: Date) -> Int {
         competitions.count { competition in
-            guard let start = competition.startDate, start <= morning else { return false }
+            guard let start = competition.startDate, start <= moment else { return false }
             guard let end = competition.endDate else { return false }
-            return end >= morning
+            return end >= moment
         }
     }
 
-    /// First seen within a day of that morning.
+    /// First seen within a day of that moment.
     ///
     /// Reports nothing when EVERYTHING is new, which is the fresh install: the
     /// first refresh seeds the whole index at once, and "282 new since
     /// yesterday" is a true sentence carrying no information. "New" only means
     /// something against a baseline, and on day one there is not one yet.
     static func newCount(
-        in competitions: [Competition], at morning: Date, calendar: Calendar
+        in competitions: [Competition], at moment: Date, calendar: Calendar
     ) -> Int {
         guard !competitions.isEmpty,
-              let since = calendar.date(byAdding: .day, value: -1, to: morning)
+              let since = calendar.date(byAdding: .day, value: -1, to: moment)
         else { return 0 }
-        let new = competitions.count { $0.firstSeen > since && $0.firstSeen <= morning }
+        let new = competitions.count { $0.firstSeen > since && $0.firstSeen <= moment }
         return new == competitions.count ? 0 : new
     }
 
-    /// `digest.2026-08-03` - one per calendar day, so rebuilding the set
-    /// replaces that morning's plan instead of stacking a second one on it.
-    static func identifier(for morning: Date, calendar: Calendar) -> String {
-        let parts = calendar.dateComponents([.year, .month, .day], from: morning)
+    /// `digest.2026-08-03` - one per calendar day, which is what lets the app
+    /// tell "already sent today" from "this is a new day" without a second
+    /// piece of state.
+    public static func identifier(for moment: Date, calendar: Calendar) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: moment)
         return String(format: "%@%04d-%02d-%02d", identifierPrefix,
                       parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
