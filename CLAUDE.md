@@ -172,7 +172,9 @@ map in the same turn.
   direction, never hardcoded vi->en, nil when languages match or detection is
   unsure; the only NaturalLanguage capability that works for Vietnamese),
   `ReminderPlan` + `DigestPlan` (the
-  two notification planners, see the notification model below), `DashboardStats`
+  two notification planners, see the notification model below), `ArrivalLog`
+  (COMP-49: when the user comes back, learned by watching - the pure half of the
+  digest's timing, applied by `App/Sources/Presence.swift`), `DashboardStats`
   (all dashboard counting; the view renders and derives nothing)
 - `App/` - SwiftUI app: `MainWindow.shell` is the one place the platforms
   differ. macOS is a two-column `NavigationSplitView` whose sidebar is
@@ -286,12 +288,24 @@ ONLY user-authored state. A competition carrying one is MARKED, and marking is
 what earns it a reminder.
 
 ```
-  every competition  ->  DigestPlan    ->  ONE post each morning (08:00 default)
+  every competition  ->  DigestPlan    ->  ONE post a day, timed by observation
                                            "6 closing this week - 2 running now"
-                                           quiet morning = no post at all
+                                           nothing to say = no post at all
 
   marked only        ->  ReminderPlan  ->  1 day + 1 hour before the deadline
                                            done/dropped keep the mark, stop firing
+```
+
+The digest's TIMING comes from `ArrivalLog` + `App/Sources/Presence.swift`
+(COMP-49, 2026-08-05), never from a clock the user set:
+
+```
+  presence samples (screen awake AND on console)
+        |
+        +-- gap >= 5h then present again = ARRIVAL
+                 |
+     macOS  -----+--> post NOW, at most once a calendar day
+     iOS         +--> feed the learned hour, schedule there
 ```
 
 Rules that are easy to violate later:
@@ -304,9 +318,26 @@ Rules that are easy to violate later:
   cannot go through `ReminderPlan` without a fake row. They share only
   `Notifier.replace(prefix:with:)` and each owns its identifier prefix
   (`reminder.` / `digest.`), which is what stops one clearing the other.
-- **Digest counts are computed relative to the morning they fire on**, not to
-  now, and only 2 mornings are scheduled ahead. Longer lookahead means stale
-  numbers; going quiet is the honest failure.
+- **Digest counts are computed for the moment the post is FOR**, which on macOS
+  is now and on iOS is the scheduled morning. `DigestPlan.make(for:at:)` is the
+  one constructor; nothing is ever built for a moment far ahead, so there is no
+  stale-numbers hazard left to manage.
+- **The digest is never scheduled on macOS.** It is posted on arrival. A
+  scheduled post is exactly what failed: on 2026-08-05 the 08:00 request fell due
+  while the Mac was in deep sleep from 07:51 to 08:06 and was never seen. Do not
+  reintroduce a wall-clock trigger on macOS, and do not "fix" a missed digest by
+  moving the hour - this Mac is asleep at every hour you could name.
+- **App liveness is NOT user presence.** A sleeping Mac dark-wakes every few
+  minutes all night and nCompHunt runs through every one of them (measured
+  02:41, 06:32, 07:38, 07:49, 08:06 on 2026-08-05). Presence is the SCREEN being
+  awake plus the session being on console; iOS uses foreground-and-active, which
+  keeps a 3am background refresh from teaching the learned hour a habit nobody
+  has. Any timing rule built on "time since the app last ticked" fires at 02:41.
+- **No picker for the digest, ever.** The on/off toggle is a decision and stays;
+  a time, a threshold, or a frequency is derived from observation and shown
+  read-only. The 5-hour absence threshold is internal and is never surfaced.
+  User directive 2026-08-05: the app is not important enough to make anyone
+  think about it.
 - **User state on `Competition` requires a prune exemption.** `statusRaw` and
   `trackedIssueID` are both spared in `CompetitionStore.prune`. The store is a
   rebuildable cache of the feeds; a mark is not rebuildable from anywhere.
