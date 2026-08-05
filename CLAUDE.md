@@ -191,8 +191,14 @@ map in the same turn.
   NO button (COMP-47): a sentence typed into the search field is resolved by
   `NLFilterGenerator` after a debounce and OFFERED as a sparkles suggestion
   row showing readable filters; accepting writes `serialized()` through the
-  one query path. Model off, token text, or an empty read = no row. Never
-  auto-apply the model's reading or rewrite typed text unasked.
+  one query path. Token text or an empty read = no row. Model off + a typed
+  sentence = an informational row naming the reason (COMP-50, dimmed sparkles,
+  never tappable, never auto-applies; the actionable button is the Settings >
+  Language status row). Never auto-apply the model's reading or rewrite typed
+  text unasked, and never fail silent on an OS-gated capability - the pattern
+  is the notifications Permission row, and `SearchQuery.isSentenceLike` is the
+  ONE spelling of the sentence rule for both the interpret and the explain
+  branches.
   Inside the detail column the layout is per-platform. iOS is a single panel and
   rows tap-to-expand in place (`CompetitionExpandedView` inline, no push). macOS has
   two styles behind a toolbar toggle (`ListStyle` @AppStorage `list.style`):
@@ -240,8 +246,12 @@ map in the same turn.
   entitlements files match). The YouTrack curl fallback is macOS-only (iOS
   cannot shell out; a Cloudflare 1010 block surfaces as its 403). Settings is
   tabbed on macOS (the `Settings` scene renders `TabView` as native toolbar
-  tabs: Sources+Refresh, API Keys, YouTrack, Calendar, Notifications,
-  Translation - one private subview per tab; iOS reuses the same subviews as
+  tabs: Profile, Sources+Refresh, API Keys, YouTrack, Calendar, Notifications,
+  Language - the last holding BOTH on-device language sections, Translation
+  and Natural-language search, whose Apple Intelligence status row mirrors
+  the notifications Permission row (macOS gets an open-settings button, iOS
+  status text only: no public deep link to that pane exists) - one private
+  subview per tab/section; iOS reuses the same subviews as
   one grouped list, its own settings idiom in a sheet; the API Keys tab bumps
   `settings.configRevision` AppStorage so the Sources tab re-reads Keychain
   `isConfigured` across the tab boundary). Settings has per-source checkboxes (UserDefaults
