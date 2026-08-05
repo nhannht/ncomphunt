@@ -43,9 +43,13 @@ final class AppModel {
     private(set) var remindersEnabled: Bool = ReminderScheduler.shared.isEnabled
     private(set) var scheduledReminderCount: Int = 0
     private(set) var digestEnabled: Bool = ReminderScheduler.shared.isDigestEnabled
-    private(set) var digestTime: Date = ReminderScheduler.shared.digestTime
     private(set) var scheduledDigestCount: Int = 0
     private(set) var nextDigestDate: Date?
+    /// What the app worked out on its own, shown read-only in Settings. There is
+    /// no setter for either: the digest's timing is observed, never configured.
+    private(set) var lastDigestPostedAt: Date?
+    private(set) var learnedMorning: DateComponents?
+    private(set) var learnedFromCount: Int = 0
 
     private var autoRefreshTask: Task<Void, Never>?
     private var countdownTask: Task<Void, Never>?
@@ -290,11 +294,16 @@ extension AppModel {
 
     /// Tick the countdown once a minute, aligned to the minute boundary so the
     /// displayed value never lags. Runs from launch, independent of any window.
+    ///
+    /// The same tick takes the presence sample that decides when the daily
+    /// summary goes out. One timer, because a second one watching for the user
+    /// would be the same question asked twice.
     func startMenuBarCountdown() {
         guard countdownTask == nil else { return }
         countdownTask = Task { [weak self] in
             while !Task.isCancelled {
                 self?.recomputeMenuBar()
+                self?.sampleUserPresence()
                 let seconds = Calendar.current.component(.second, from: .now)
                 try? await Task.sleep(for: .seconds(60 - seconds))
             }
@@ -432,14 +441,6 @@ extension AppModel {
         }
     }
 
-    func setDigestTime(_ time: Date) {
-        Task {
-            await ReminderScheduler.shared.setDigestTime(
-                time, competitions: allCompetitions())
-            adoptReminderState()
-        }
-    }
-
     /// Read the true pending count back on launch, before any refresh has run.
     func loadReminderStatus() {
         Task {
@@ -453,8 +454,33 @@ extension AppModel {
         remindersEnabled = ReminderScheduler.shared.isEnabled
         scheduledReminderCount = ReminderScheduler.shared.scheduledCount
         digestEnabled = ReminderScheduler.shared.isDigestEnabled
-        digestTime = ReminderScheduler.shared.digestTime
         scheduledDigestCount = ReminderScheduler.shared.scheduledDigestCount
         nextDigestDate = ReminderScheduler.shared.nextDigestDate
+        lastDigestPostedAt = ReminderScheduler.shared.lastDigestPostedAt
+        learnedMorning = Presence.learnedMorning
+        learnedFromCount = Presence.arrivalCount
+    }
+
+    /// Take one presence sample and, if the user has just come back after a long
+    /// enough gap, post the daily summary.
+    ///
+    /// Called from the once-a-minute tick. Safe to call from anywhere and at any
+    /// rate: `Presence` discards every sample taken while the screen is asleep or
+    /// the session is not on console, which is what keeps a night of dark wakes
+    /// from reading as a morning.
+    func sampleUserPresence(now: Date = .now) {
+        #if os(macOS)
+        guard Presence.sample(now: now) else { return }
+        ReminderScheduler.shared.noteArrival(competitions: allCompetitions(), now: now)
+        adoptReminderState()
+        #else
+        // iOS samples only when the scene becomes active, and schedules rather
+        // than posts, so an arrival there just feeds the learned hour.
+        guard Presence.sample(now: now) else { return }
+        Task {
+            await ReminderScheduler.shared.reschedule(competitions: allCompetitions())
+            adoptReminderState()
+        }
+        #endif
     }
 }
