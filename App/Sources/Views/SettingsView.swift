@@ -522,7 +522,7 @@ private struct NotificationsSettings: View {
             ) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Daily summary")
-                    Text("One post each morning: what closes this week, what is running, what is new. A morning with nothing to say sends nothing.")
+                    Text(digestExplanation)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -531,14 +531,18 @@ private struct NotificationsSettings: View {
             .toggleStyle(.checkbox)
             #endif
             if model.digestEnabled {
-                DatePicker("Send it at", selection: Binding(
-                    get: { model.digestTime },
-                    set: { model.setDigestTime($0) }),
-                    displayedComponents: .hourAndMinute)
+                // Read-only on purpose. The app works out when to send this by
+                // watching when you come back, so there is nothing here to set -
+                // only what it decided, shown so the decision is inspectable.
+                #if os(macOS)
+                LabeledContent("Last summary", value: lastSummaryText)
+                #else
+                LabeledContent("Your morning", value: learnedMorningText)
                 // Proof a post is actually queued, read back from the
                 // notification centre - not what the toggle wishes. The
                 // difference is what makes "it never arrived" diagnosable.
                 LabeledContent("Next digest", value: nextDigestText)
+                #endif
             }
 
             Toggle(isOn: Binding(
@@ -571,6 +575,35 @@ private struct NotificationsSettings: View {
             permission = await Notifier.permissionStatus()
             model.loadReminderStatus()
         }
+    }
+
+    /// The platforms reach the user differently, so they promise different
+    /// things. Neither promises an hour the user chose.
+    private var digestExplanation: String {
+        #if os(macOS)
+        return "One post when you come back to your Mac after a few hours away: what closes this week, what is running, what is new. Nothing to say means nothing is sent."
+        #else
+        return "One post a day, around the time you usually pick up your phone: what closes this week, what is running, what is new. Nothing to say means nothing is sent."
+        #endif
+    }
+
+    /// macOS posts on arrival rather than scheduling, so the honest thing to
+    /// show is what happened, not what is queued.
+    private var lastSummaryText: String {
+        guard let last = model.lastDigestPostedAt else { return "Not sent yet" }
+        return last.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    /// What the app worked out from watching. "Still learning" is the honest
+    /// answer before there are enough returns to see a pattern in.
+    private var learnedMorningText: String {
+        guard let morning = model.learnedMorning,
+              let hour = morning.hour, let minute = morning.minute,
+              let time = Calendar.current.date(
+                bySettingHour: hour, minute: minute, second: 0, of: .now)
+        else { return "Still learning" }
+        let when = time.formatted(date: .omitted, time: .shortened)
+        return "about \(when) \u{00B7} from \(model.learnedFromCount) mornings"
     }
 
     /// Read back from the notification centre, so this proves a request
