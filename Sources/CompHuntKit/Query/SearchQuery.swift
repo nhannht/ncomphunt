@@ -201,6 +201,16 @@ public struct SearchQuery: Equatable, Sendable {
 
     // MARK: Parsing
 
+    /// Whether typed text reads as a sentence for the on-device model rather
+    /// than search tokens: two or more bare words and no operator syntax.
+    /// One name for the rule, because the app asks it twice - once to decide
+    /// whether to interpret, once to decide whether to explain why it cannot
+    /// (COMP-50) - and two inlined spellings would drift.
+    public static func isSentenceLike(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.contains(" ") && !trimmed.contains(":")
+    }
+
     public static func parse(_ text: String) -> SearchQuery {
         var query = SearchQuery()
         for token in tokenize(text) {

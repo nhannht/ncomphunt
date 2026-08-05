@@ -267,3 +267,32 @@ private var spectral: Competition {
         #expect(!SearchQuery.parse("").hasFreeText)
     }
 }
+
+/// The rule that routes typed text to the on-device model (COMP-50): a
+/// sentence is interpreted, tokens are not, and the answer must be the same
+/// for "should we interpret" and "should we explain why we cannot".
+@Suite struct SentenceLikeness {
+    @Test func aSentenceIsSentenceLike() {
+        #expect(SearchQuery.isSentenceLike("vietnam ctf end this month"))
+        #expect(SearchQuery.isSentenceLike("design contests closing soon"))
+    }
+
+    @Test func oneWordIsSearchingNotAsking() {
+        #expect(!SearchQuery.isSentenceLike("ctf"))
+        #expect(!SearchQuery.isSentenceLike(""))
+    }
+
+    @Test func operatorSyntaxIsNeverASentence() {
+        #expect(!SearchQuery.isSentenceLike("category:cp"))
+        // Mixed text with an operator means the person is already using the
+        // syntax - rewriting it through the model would be an unasked rewrite.
+        #expect(!SearchQuery.isSentenceLike("vietnam ctf category:cp"))
+    }
+
+    @Test func surroundingWhitespaceDoesNotCount() {
+        // A trailing space after one word is the person mid-thought, not a
+        // two-word sentence.
+        #expect(!SearchQuery.isSentenceLike("ctf "))
+        #expect(SearchQuery.isSentenceLike("  vietnam ctf  "))
+    }
+}

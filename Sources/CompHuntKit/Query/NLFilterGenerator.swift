@@ -38,10 +38,10 @@ public enum NLFilterError: LocalizedError {
 public struct NLFilterGenerator: QueryGenerating {
     public init() {}
 
-    public var unavailableReason: String? {
+    public var availability: GeneratorAvailability {
         switch SystemLanguageModel.default.availability {
-        case .available: nil
-        case .unavailable(let reason): Self.explain(reason)
+        case .available: .available
+        case .unavailable(let reason): Self.status(for: reason)
         }
     }
 
@@ -70,11 +70,8 @@ public struct NLFilterGenerator: QueryGenerating {
         // Availability is re-checked here, not only in the UI. The UI hides the
         // affordance when the model is unusable, but Apple Intelligence can be
         // switched off between the view rendering and this call.
-        switch SystemLanguageModel.default.availability {
-        case .available:
-            break
-        case .unavailable(let reason):
-            throw NLFilterError.unavailable(Self.explain(reason))
+        if case .unavailable(let reason, _) = availability {
+            throw NLFilterError.unavailable(reason)
         }
 
         do {
@@ -111,18 +108,31 @@ public struct NLFilterGenerator: QueryGenerating {
         return SearchQuery(response.content, from: text, now: now)
     }
 
-    private static func explain(
-        _ reason: SystemLanguageModel.Availability.UnavailableReason
-    ) -> String {
+    /// Internal, not private, so the mapping is testable: which reasons earn
+    /// an open-settings affordance is exactly the kind of decision that can be
+    /// wrong without anyone noticing. Only a switched-off feature is fixable
+    /// there - ineligible hardware has no fix, and a preparing model fixes
+    /// itself.
+    static func status(
+        for reason: SystemLanguageModel.Availability.UnavailableReason
+    ) -> GeneratorAvailability {
         switch reason {
         case .deviceNotEligible:
-            "This device cannot run Apple Intelligence, so natural-language search is unavailable."
+            .unavailable(
+                reason: "This device cannot run Apple Intelligence, so natural-language search is unavailable.",
+                fixableInSettings: false)
         case .appleIntelligenceNotEnabled:
-            "Turn on Apple Intelligence in Settings to use natural-language search."
+            .unavailable(
+                reason: "Turn on Apple Intelligence in Settings to use natural-language search.",
+                fixableInSettings: true)
         case .modelNotReady:
-            "Apple Intelligence is still preparing. Try again shortly."
+            .unavailable(
+                reason: "Apple Intelligence is still preparing. Try again shortly.",
+                fixableInSettings: false)
         @unknown default:
-            "Natural-language search is unavailable on this device right now."
+            .unavailable(
+                reason: "Natural-language search is unavailable on this device right now.",
+                fixableInSettings: false)
         }
     }
 }
