@@ -37,6 +37,10 @@ struct MainWindow: View {
     /// simply never exists instead of a failure needing explanation.
     @State private var nlSuggestion: SearchQuery?
     @State private var nlThinking = false
+    /// Why a typed sentence is NOT being interpreted, when that is the case.
+    /// The one thing the dropdown must never do is stay silent about it
+    /// (COMP-50) - a person who typed a sentence asked the model a question.
+    @State private var nlUnavailableNotice: String?
     @State private var nlTask: Task<Void, Never>?
     #if os(macOS)
     @Environment(\.openWindow) private var openWindow
@@ -51,8 +55,8 @@ struct MainWindow: View {
     private var query: SearchQuery { SearchQuery.parse(queryText) }
 
     /// On-device natural-language filtering, free on every platform. The value
-    /// is stateless; availability is re-read from `unavailableReason` because
-    /// Apple Intelligence can be toggled while the app runs.
+    /// is stateless; `availability` is re-read on each use because Apple
+    /// Intelligence can be toggled while the app runs.
     private let generator = NLFilterGenerator()
 
     var body: some View {
@@ -156,6 +160,17 @@ struct MainWindow: View {
                 } icon: {
                     Image(systemName: "sparkles")
                         .symbolEffect(.variableColor.iterative, isActive: true)
+                }
+            } else if let nlUnavailableNotice {
+                // A typed sentence with the model off. Informational, never
+                // tappable - the actionable button lives in Settings >
+                // Language, where a system-settings jump is expected.
+                Label {
+                    Text(nlUnavailableNotice)
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    Image(systemName: "sparkles")
+                        .foregroundStyle(.secondary)
                 }
             }
             ForEach(SearchQuery.suggestions(for: queryText)) { suggestion in
@@ -324,7 +339,7 @@ struct MainWindow: View {
     // MARK: Presentation
 
     private var searchPrompt: String {
-        generator.unavailableReason == nil
+        generator.availability == .available
             ? "Search, or describe what you want"
             : "Search, or filter with category:"
     }
@@ -359,10 +374,17 @@ struct MainWindow: View {
         nlTask?.cancel()
         nlSuggestion = nil
         nlThinking = false
+        nlUnavailableNotice = nil
         let text = queryText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard generator.unavailableReason == nil,
-              text.contains(" "), !text.contains(":")
-        else { return }
+        // Two separate questions, never one guard (COMP-50). Token text or a
+        // bare word means there is nothing to interpret and nothing to say.
+        // A sentence with the model off means there IS something to say -
+        // collapsing the two is how this failed silent the first time.
+        guard SearchQuery.isSentenceLike(text) else { return }
+        if case .unavailable(let reason, _) = generator.availability {
+            nlUnavailableNotice = reason
+            return
+        }
         nlTask = Task {
             try? await Task.sleep(for: .milliseconds(800))
             guard !Task.isCancelled else { return }

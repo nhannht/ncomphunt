@@ -39,8 +39,14 @@ struct SettingsView: View {
             Tab("Notifications", systemImage: "bell.badge") {
                 tabForm { NotificationsSettings() }
             }
-            Tab("Translation", systemImage: "translate") {
-                tabForm { TranslationSettings() }
+            // "Language", not "Translation": both sections are the on-device
+            // language capabilities, and natural-language search has no other
+            // home - search itself lives in the main window, not in Settings.
+            Tab("Language", systemImage: "translate") {
+                tabForm {
+                    TranslationSettings()
+                    NLSearchSettings()
+                }
             }
         }
         #else
@@ -52,6 +58,7 @@ struct SettingsView: View {
             CalendarSettings()
             NotificationsSettings()
             TranslationSettings()
+            NLSearchSettings()
         }
         .formStyle(.grouped)
         // API keys, engine ids, and URLs: never autocapitalize or "correct".
@@ -679,6 +686,58 @@ private struct TranslationSettings: View {
             .map(ReadingLanguage.init)
             .sorted { $0.name < $1.name }
     }
+}
+
+/// Whether sentences typed into the search field reach the on-device model,
+/// and when they cannot, why and what to do about it (COMP-50). Mirrors the
+/// notifications Permission row: an OS-gated capability whose denial is
+/// otherwise completely invisible - nothing throws when Apple Intelligence is
+/// off, the search dropdown just goes quiet.
+private struct NLSearchSettings: View {
+    /// Re-read per appearance, same precedent as the Permission row: Apple
+    /// Intelligence can be toggled in System Settings while this window is
+    /// open, and coming back to the tab is the natural refresh point.
+    @State private var availability = NLFilterGenerator().availability
+
+    var body: some View {
+        Section("Natural-language search") {
+            LabeledContent("Apple Intelligence") {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(statusText)
+                        .multilineTextAlignment(.trailing)
+                    #if os(macOS)
+                    if case .unavailable(_, fixableInSettings: true) = availability {
+                        Button("Open Apple Intelligence Settings") {
+                            openAppleIntelligenceSettings()
+                        }
+                    }
+                    #endif
+                    // iOS: text only. There is no public deep link to the
+                    // Apple Intelligence pane, and a link that lands somewhere
+                    // else would be worse than naming the destination.
+                }
+            }
+        }
+        .task { availability = NLFilterGenerator().availability }
+    }
+
+    private var statusText: String {
+        switch availability {
+        case .available:
+            "On. Describe what you want in the search field."
+        case .unavailable(let reason, _):
+            reason
+        }
+    }
+
+    #if os(macOS)
+    private func openAppleIntelligenceSettings() {
+        if let url = URL(string:
+            "x-apple.systempreferences:com.apple.Siri-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+    #endif
 }
 
 /// A translatable reading language as the picker shows it: ISO code stored,
