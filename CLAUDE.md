@@ -28,7 +28,11 @@ One page, "CompHunt UI":
 - `github showcase` - README hero composition
 - `AS 1 Hero` .. `AS 5 Widget` - the five 2880x1800 App Store artboards
   (gradient #D825FC>#1C3D7A>#3574F0, white SF Pro Display caption, floating
-  panel); exported 1x to `showcase/appstore/as*.png` for ASC upload
+  panel). NOTE: the SHIPPED 1.2.0 set (`showcase/appstore/as01..as10.png`,
+  10 renders) was code-composed to the same recipe from user CleanShots
+  because the Sketch MCP was down that session; the artboards still show the
+  1.1.0-era five. Backport tracked in COMP-52 - rebuild the ten as real
+  artboards and sync this map in the same turn.
 
 Structural changes to the document (pages/artboards/symbols) must update this
 map in the same turn.
