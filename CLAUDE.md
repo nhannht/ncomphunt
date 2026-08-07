@@ -26,13 +26,21 @@ One page, "CompHunt UI":
   `Menu Bar Extra`, `Actions Menu`
 - `appstore screenshot` - user staging frame: raw 1.0.0 captures + MacBook bezel
 - `github showcase` - README hero composition
-- `AS 1 Hero` .. `AS 5 Widget` - the five 2880x1800 App Store artboards
+- `AS 1 Hero` .. `AS 5 Widget` - the five 2880x1800 macOS App Store artboards
   (gradient #D825FC>#1C3D7A>#3574F0, white SF Pro Display caption, floating
-  panel). NOTE: the SHIPPED 1.2.0 set (`showcase/appstore/as01..as10.png`,
+  panel). NOTE: the SHIPPED macOS 1.2.0 set (`showcase/appstore/as01..as10.png`,
   10 renders) was code-composed to the same recipe from user CleanShots
-  because the Sketch MCP was down that session; the artboards still show the
+  because the Sketch MCP was down that session; these artboards still show the
   1.1.0-era five. Backport tracked in COMP-52 - rebuild the ten as real
   artboards and sync this map in the same turn.
+- `AS iOS 1 List` .. `AS iOS 6 Prizes` - the six iPhone 6.9" App Store
+  artboards (1-5 portrait 1320x2868, 6 landscape 2868x1320): gradient +
+  caption recipe, simulator capture under the official Apple product bezel
+  (iPhone 17 Pro Max Deep Blue, from Bezel-iPhone-17.dmg; slot is 1:1 at
+  device pixels), shadow blur 60/y24 on the bezel layer
+- `AS iPad 1 List` (2064x2752), `AS iPad 2 Detail` (2752x2064) - the iPad 13"
+  App Store artboards, same construction with the iPad Pro (M5) 13" Space
+  Black bezel
 
 Structural changes to the document (pages/artboards/symbols) must update this
 map in the same turn.
