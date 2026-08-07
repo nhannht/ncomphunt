@@ -67,8 +67,10 @@ struct MenuBarView: View {
         Divider()
 
         Button("Open nCompHunt") {
+            // Policy first: an accessory app's new window opens behind the
+            // frontmost app, so the Dock icon comes back before the summon.
+            DockVisibility.prepareToShowWindow()
             openWindow(id: "main")
-            NSApp.activate(ignoringOtherApps: true)
         }
 
         Button(model.isRefreshing ? "Refreshing..." : "Refresh Now") {

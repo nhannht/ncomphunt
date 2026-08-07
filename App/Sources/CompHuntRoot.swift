@@ -39,10 +39,11 @@ struct CompHuntRoot: Scene {
         WindowGroup(id: "main") {
             MainWindow()
                 .environment(model)
+                .countsTowardDockIcon()
                 .onOpenURL { url in
                     model.handleDeepLink(url)
                     #if os(macOS)
-                    NSApp.activate(ignoringOtherApps: true)
+                    DockVisibility.prepareToShowWindow()
                     #endif
                 }
                 // Spotlight fallback: a result opened through the classic
@@ -81,6 +82,7 @@ struct CompHuntRoot: Scene {
             DashboardView()
                 .environment(model)
                 .frame(minWidth: 420, minHeight: 480)
+                .countsTowardDockIcon()
         }
         .modelContainer(model.container)
         .defaultSize(width: 620, height: 720)
@@ -96,6 +98,7 @@ struct CompHuntRoot: Scene {
         Settings {
             SettingsView()
                 .environment(model)
+                .countsTowardDockIcon()
         }
         // The Profile tab reads and writes the UserProfile row via @Query,
         // unlike the other tabs (Keychain/AppStorage), so this scene needs
