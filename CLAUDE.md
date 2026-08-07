@@ -242,7 +242,14 @@ map in the same turn.
   `status:any`. A Dashboard toolbar button
   opens `DashboardView`, its own `Window` scene on macOS and a sheet on iOS,
   the same split Settings uses.
-  Plus MenuBarExtra +
+  The Dock icon follows window state (`DockVisibility`, COMP-53): any real
+  window - main, Dashboard, Settings - visible keeps `.regular`; none slips
+  the app to `.accessory`, so the always-running background half shows only
+  the menu-bar extra. Window-summoning paths (the menu bar's Open item, deep
+  links) call `prepareToShowWindow()` BEFORE `openWindow`, or the window
+  opens behind the frontmost app. MenuBarExtra content never feeds the
+  counter - it appears every time the menu opens. Never a Settings toggle;
+  the state is derived. Plus MenuBarExtra +
   refresh timer + UNUserNotifications + `CalendarSyncService` (opt-in EventKit
   sync into a dedicated "nCompHunt" calendar; needs
   `NSCalendarsFullAccessUsageDescription` + the `personal-information.calendars`
