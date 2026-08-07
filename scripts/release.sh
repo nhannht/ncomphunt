@@ -7,10 +7,15 @@
 #   scripts/release.sh appstore   archive with Mac App Store signing and upload
 #                                 to App Store Connect (or export a .pkg for
 #                                 Transporter when no ASC API key is set)
+#   scripts/release.sh ios        archive CompHuntiOS and upload to App Store
+#                                 Connect (or export an .ipa for Transporter
+#                                 when no ASC API key is set)
 #
-# All three lanes ship the same FREE app: this repo alone, nothing else needed.
-# nCompHunt is free forever; the App Store lane archives the same CompHunt
-# target the DMG lanes build, just with Mac App Store signing.
+# All lanes ship the same FREE app: this repo alone, nothing else needed.
+# nCompHunt is free forever; the App Store lanes archive the same targets the
+# DMG lane builds, just with App Store signing. iOS shares the macOS bundle id
+# (universal purchase, one App Store record); ASC tracks build numbers per
+# platform, so an iOS build number only has to be new among iOS builds.
 #
 # Prereqs:
 #   - "Developer ID Application" certificate in the login keychain
@@ -256,9 +261,72 @@ PLIST
   fi
 }
 
+# --- iOS App Store lane -----------------------------------------------------
+# The iOS twin of appstore(). Signing is automatic already in project.yml (no
+# manual Developer ID settings to override on iOS), so the archive needs no
+# identity overrides; -allowProvisioningUpdates plus the ASC API key lets
+# xcodebuild mint the iOS certs and profiles for both bundle ids. caffeinate
+# for the same reason as the other upload lanes.
+ios() {
+  local ios_dir="$BUILD_DIR/ios"
+  local ios_archive="$ios_dir/CompHunt-ios.xcarchive"
+  local ios_export="$ios_dir/export"
+  local auth_flags=()
+  local destination="upload"
+
+  if [ -n "${ASC_KEY_P8:-}" ] && [ -n "${ASC_KEY_ID:-}" ] && [ -n "${ASC_ISSUER_ID:-}" ]; then
+    test -f "$ASC_KEY_P8" || { echo "FATAL: ASC_KEY_P8 ($ASC_KEY_P8) not found" >&2; exit 1; }
+    auth_flags=(-authenticationKeyPath "$ASC_KEY_P8"
+                -authenticationKeyID "$ASC_KEY_ID"
+                -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+  else
+    destination="export"
+    echo "NOTE: ASC_KEY_P8/ASC_KEY_ID/ASC_ISSUER_ID not all set."
+    echo "      Exporting an .ipa to upload manually with Transporter.app."
+    echo "      (automatic signing then relies on the Apple ID session in Xcode)"
+  fi
+
+  rm -rf "$ios_dir"
+  mkdir -p "$ios_dir"
+
+  (cd "$ROOT/App" && xcodegen generate)
+  xcodebuild -project "$ROOT/App/CompHunt.xcodeproj" -scheme CompHuntiOS \
+    -destination 'generic/platform=iOS' \
+    -configuration Release -archivePath "$ios_archive" archive \
+    -allowProvisioningUpdates ${auth_flags[@]+"${auth_flags[@]}"}
+
+  cat > "$ios_dir/ExportOptions.plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key><string>app-store-connect</string>
+  <key>teamID</key><string>V3P5U9Z68M</string>
+  <key>signingStyle</key><string>automatic</string>
+  <key>destination</key><string>$destination</string>
+</dict>
+</plist>
+PLIST
+
+  caffeinate -i xcodebuild -exportArchive -archivePath "$ios_archive" \
+    -exportOptionsPlist "$ios_dir/ExportOptions.plist" \
+    -exportPath "$ios_export" \
+    -allowProvisioningUpdates ${auth_flags[@]+"${auth_flags[@]}"}
+
+  if [ "$destination" = "upload" ]; then
+    echo "Uploaded iOS $VERSION (build from $ios_archive) to App Store Connect."
+    echo "Track processing in ASC > TestFlight/Builds; attach to the version when Ready."
+  else
+    echo "Exported for manual upload:"
+    ls -l "$ios_export"
+    echo "Open Transporter.app and deliver the .ipa above."
+  fi
+}
+
 case "${1:-}" in
   build) build ;;
   notarize) notarize ;;
   appstore) appstore ;;
-  *) echo "usage: scripts/release.sh {build|notarize|appstore}" >&2; exit 1 ;;
+  ios) ios ;;
+  *) echo "usage: scripts/release.sh {build|notarize|appstore|ios}" >&2; exit 1 ;;
 esac
