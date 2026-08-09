@@ -30,8 +30,6 @@ and lists them with sort and group controls, category and region filters, a menu
 bar extra, native notifications for new finds, and an optional sync into a
 dedicated Apple Calendar that keeps every deadline up to date.
 
-![](./showcase/appstore/as2-menubar.png)
-
 Built in Swift 6 / SwiftUI with SwiftData persistence. There is no account to
 create and no setup: the app talks directly to the public sources below and
 keeps its index in local storage on your Mac.
@@ -80,8 +78,6 @@ configuration and fill every category out of the box.
 - Brave Search + Google Programmable Search - lead discovery over a fixed
   bilingual query catalog, at most once per day to stay inside free API quotas
   (both need free keys; leads with no dates age out after 14 days unseen)
-
-![](./showcase/appstore/as3-sources.png)
 
 ## Configuration (optional API keys)
 
@@ -146,8 +142,6 @@ system sheet (Notes, Messages, Mail, AirDrop), copy link, add to Calendar as an
 
 ![Animated schematic: a right-click opens the row context menu and Copy Link confirms](./assets/schematics/schematic-actions.gif)
 
-![](./showcase/appstore/as4-actions.png)
-
 ## Widget
 
 An **Upcoming Contests** widget for the desktop and Notification Centre, in
@@ -155,8 +149,6 @@ small and medium sizes, showing the next competitions with a live countdown. It
 reads a snapshot the app writes into a shared App Group container.
 
 ![Animated schematic: the desktop widget counts a deadline down and rotates in the next contest](./assets/schematics/schematic-widget.gif)
-
-![](./showcase/appstore/as5-widget.png)
 
 ## Layout
 
