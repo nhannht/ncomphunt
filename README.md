@@ -17,11 +17,11 @@
 </p>
 
 <p align="center">
-  <a href="https://youtu.be/S0OubPVMVRQ"><img src="./assets/demo-search.gif" alt="Typing the sentence 'vietnam ctf end this month' and having nCompHunt read it on device and turn it into a filter"></a>
+  <a href="https://www.youtube.com/watch?v=SyjTBvP7E7s"><img src="./assets/demo-search.gif" alt="Typing the sentence 'vietnam ctf end this month' and having nCompHunt read it on device and turn it into a filter"></a>
 </p>
 
 <p align="center">
-  <a href="https://youtu.be/S0OubPVMVRQ">Watch the full demo with sound (1 min 47 sec)</a>
+  <a href="https://www.youtube.com/watch?v=SyjTBvP7E7s">Watch the full demo with sound (2 min 11 sec)</a>
 </p>
 
 Native macOS app that finds and indexes competitions - competitive programming,
